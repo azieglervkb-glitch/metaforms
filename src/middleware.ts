@@ -1,5 +1,18 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { jwtVerify } from 'jose';
+
+const JWT_SECRET = new TextEncoder().encode(
+    process.env.JWT_SECRET || 'leadsignal-secret-key-change-in-production'
+);
+
+async function verifyTokenEdge(token: string): Promise<boolean> {
+    try {
+        await jwtVerify(token, JWT_SECRET);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 export async function middleware(request: NextRequest) {
     const token = request.cookies.get('auth_token')?.value;
@@ -18,15 +31,15 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
 
-        const payload = verifyToken(token);
-        if (!payload) {
+        const valid = await verifyTokenEdge(token);
+        if (!valid) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
     }
 
     if (isAuthRoute && token) {
-        const payload = verifyToken(token);
-        if (payload) {
+        const valid = await verifyTokenEdge(token);
+        if (valid) {
             return NextResponse.redirect(new URL('/dashboard', request.url));
         }
     }
