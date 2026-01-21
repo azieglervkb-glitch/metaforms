@@ -14,6 +14,14 @@ interface Lead {
     form_id: string | null;
     form_name: string | null;
     created_at: string;
+    assigned_to: string | null;
+    assignee_name: string | null;
+}
+
+interface TeamMember {
+    id: string;
+    full_name: string;
+    email: string;
 }
 
 interface FormOption {
@@ -24,13 +32,25 @@ interface FormOption {
 export default function LeadsPage() {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [forms, setForms] = useState<FormOption[]>([]);
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
     const [formFilter, setFormFilter] = useState<string>('');
 
     useEffect(() => {
         fetchLeads();
+        fetchTeamMembers();
     }, [filter, formFilter]);
+
+    const fetchTeamMembers = async () => {
+        try {
+            const res = await fetch('/api/team');
+            const data = await res.json();
+            setTeamMembers(data.members || []);
+        } catch (error) {
+            console.error('Error fetching team:', error);
+        }
+    };
 
     const fetchLeads = async () => {
         setLoading(true);
@@ -85,6 +105,50 @@ export default function LeadsPage() {
         }
     };
 
+    const createTestLead = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch('/api/leads/test', {
+                method: 'POST',
+            });
+            const data = await res.json();
+            if (data.success) {
+                await fetchLeads();
+                alert(`Test-Lead erstellt: ${data.lead.full_name}`);
+            } else {
+                alert(data.error || 'Fehler beim Erstellen');
+            }
+        } catch (error) {
+            console.error('Error creating test lead:', error);
+            alert('Fehler beim Erstellen des Test-Leads');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const assignLead = async (leadId: string, userId: string | null) => {
+        try {
+            if (!userId) {
+                // Unassign
+                await fetch(`/api/leads/${leadId}/assign`, {
+                    method: 'DELETE',
+                });
+            } else {
+                // Assign
+                await fetch(`/api/leads/${leadId}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId }),
+                });
+            }
+            fetchLeads();
+        } catch (error) {
+            console.error('Error assigning lead:', error);
+            alert('Fehler beim Zuweisen');
+        }
+    };
+
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('de-DE', {
             day: '2-digit',
@@ -104,6 +168,16 @@ export default function LeadsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
                 <div className="flex flex-wrap gap-3">
+                    {/* Test Lead Button */}
+                    <button
+                        onClick={createTestLead}
+                        disabled={loading}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-medium hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <span>🧪</span>
+                        <span>Test-Lead erstellen</span>
+                    </button>
+
                     {/* Form Filter */}
                     {forms.length > 0 && (
                         <select
@@ -167,6 +241,7 @@ export default function LeadsPage() {
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">E-Mail</th>
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">Telefon</th>
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">Formular</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Zugewiesen</th>
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">Datum</th>
                                     <th className="text-left p-4 text-sm font-medium text-gray-600">Aktionen</th>
@@ -190,10 +265,24 @@ export default function LeadsPage() {
                                             )}
                                         </td>
                                         <td className="p-4">
+                                            <select
+                                                value={lead.assigned_to || ''}
+                                                onChange={(e) => assignLead(lead.id, e.target.value || null)}
+                                                className="px-3 py-1.5 rounded-lg border text-xs bg-white text-gray-700 min-w-[140px]"
+                                            >
+                                                <option value="">Nicht zugewiesen</option>
+                                                {teamMembers.map((member) => (
+                                                    <option key={member.id} value={member.id}>
+                                                        {member.full_name || member.email}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="p-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
-                                                    lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
-                                                        lead.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
-                                                            'bg-yellow-100 text-yellow-700'
+                                                lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
+                                                    lead.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {lead.status === 'qualified' ? 'Qualifiziert' :
                                                     lead.status === 'unqualified' ? 'Unqualifiziert' :

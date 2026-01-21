@@ -29,6 +29,16 @@ interface TeamMemberInfo {
   email: string;
 }
 
+interface LeadAssignmentEmailParams {
+  to: string;
+  assigneeName: string;
+  leadName: string;
+  leadEmail: string;
+  leadPhone: string;
+  leadId: string;
+  formName?: string;
+}
+
 /**
  * Generate a secure token and store it in database
  */
@@ -48,13 +58,13 @@ async function generateAndStoreToken(leadId: string): Promise<string> {
  * Send email when lead is assigned to team member
  * Includes one-click rating buttons
  */
-export async function sendLeadAssignmentEmail(member: TeamMemberInfo, lead: LeadInfo) {
+export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
 
   // Generate rating token
   let ratingToken = '';
   try {
-    ratingToken = await generateAndStoreToken(lead.id);
+    ratingToken = await generateAndStoreToken(params.leadId);
   } catch (e) {
     console.error('Failed to generate rating token:', e);
   }
@@ -63,8 +73,8 @@ export async function sendLeadAssignmentEmail(member: TeamMemberInfo, lead: Lead
   const unqualifiedUrl = `${appUrl}/api/leads/rate?token=${ratingToken}&rating=unqualified`;
 
   if (!process.env.RESEND_API_KEY) {
-    console.log('📧 [DEV] Email would be sent to:', member.email);
-    console.log('Lead:', lead);
+    console.log('📧 [DEV] Email would be sent to:', params.to);
+    console.log('Lead:', params);
     console.log('Qualified URL:', qualifiedUrl);
     console.log('Unqualified URL:', unqualifiedUrl);
     return { success: true, dev: true };
@@ -78,8 +88,8 @@ export async function sendLeadAssignmentEmail(member: TeamMemberInfo, lead: Lead
     }
     const { data, error } = await resend.emails.send({
       from: 'LeadSignal <noreply@leadsignal.de>',
-      to: member.email,
-      subject: `Neuer Lead: ${lead.fullName || lead.email || 'Neuer Kontakt'}`,
+      to: params.to,
+      subject: `Neuer Lead: ${params.leadName || params.leadEmail || 'Neuer Kontakt'}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
           
@@ -91,7 +101,7 @@ export async function sendLeadAssignmentEmail(member: TeamMemberInfo, lead: Lead
           <!-- Content -->
           <div style="padding: 32px; border: 1px solid #e5e7eb; border-top: none;">
             <p style="color: #374151; font-size: 16px; margin: 0 0 24px;">
-              Hallo ${member.firstName},<br><br>
+              Hallo ${params.assigneeName},<br><br>
               Dir wurde ein neuer Lead zugewiesen:
             </p>
             
@@ -100,20 +110,20 @@ export async function sendLeadAssignmentEmail(member: TeamMemberInfo, lead: Lead
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280; width: 100px; vertical-align: top;">Name:</td>
-                  <td style="padding: 10px 0; color: #111827; font-weight: 600; font-size: 18px;">${lead.fullName || '-'}</td>
+                  <td style="padding: 10px 0; color: #111827; font-weight: 600; font-size: 18px;">${params.leadName || '-'}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280;">E-Mail:</td>
-                  <td style="padding: 10px 0; color: #111827;"><a href="mailto:${lead.email}" style="color: #3b82f6; text-decoration: none;">${lead.email || '-'}</a></td>
+                  <td style="padding: 10px 0; color: #111827;"><a href="mailto:${params.leadEmail}" style="color: #3b82f6; text-decoration: none;">${params.leadEmail || '-'}</a></td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280;">Telefon:</td>
-                  <td style="padding: 10px 0; color: #111827;"><a href="tel:${lead.phone}" style="color: #3b82f6; text-decoration: none;">${lead.phone || '-'}</a></td>
+                  <td style="padding: 10px 0; color: #111827;"><a href="tel:${params.leadPhone}" style="color: #3b82f6; text-decoration: none;">${params.leadPhone || '-'}</a></td>
                 </tr>
-                ${lead.formName ? `
+                ${params.formName ? `
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280;">Formular:</td>
-                  <td style="padding: 10px 0; color: #7c3aed; font-weight: 500;">${lead.formName}</td>
+                  <td style="padding: 10px 0; color: #7c3aed; font-weight: 500;">${params.formName}</td>
                 </tr>
                 ` : ''}
               </table>

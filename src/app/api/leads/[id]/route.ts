@@ -22,7 +22,7 @@ interface MetaConnection {
 }
 
 // Stages that trigger CAPI signal
-const CAPI_STAGES = ['interested', 'meeting', 'won'];
+const CAPI_STAGES = ['qualified', 'interested', 'meeting', 'won'];
 
 export async function PATCH(
     request: NextRequest,

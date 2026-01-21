@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS leads (
   status VARCHAR(50) DEFAULT 'new',
   notes TEXT,
   
+  -- Assignment tracking
+  assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+  assigned_at TIMESTAMP WITH TIME ZONE,
+  
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(org_id, meta_lead_id)
@@ -96,6 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_quality_status ON leads(quality_status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at);
+CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_lead_forms_org_id ON lead_forms(org_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_org_id ON users(org_id);

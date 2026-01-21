@@ -45,23 +45,28 @@ export async function GET(request: NextRequest) {
         const offset = (page - 1) * limit;
 
         // Build query
-        let sql = `SELECT * FROM leads WHERE org_id = $1`;
+        let sql = `
+            SELECT l.*, u.full_name as assignee_name 
+            FROM leads l
+            LEFT JOIN users u ON l.assigned_to = u.id
+            WHERE l.org_id = $1
+        `;
         const params: (string | number)[] = [payload.orgId];
         let paramIndex = 2;
 
         if (status) {
-            sql += ` AND status = $${paramIndex}`;
+            sql += ` AND l.status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
         }
 
         if (formId) {
-            sql += ` AND form_id = $${paramIndex}`;
+            sql += ` AND l.form_id = $${paramIndex}`;
             params.push(formId);
             paramIndex++;
         }
 
-        sql += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        sql += ` ORDER BY l.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(limit, offset);
 
         const leads = await query<Lead>(sql, params);
