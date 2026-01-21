@@ -263,6 +263,16 @@ function LeadDetailModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ teamMemberId: assignedTo }),
             });
+
+            // Handle non-JSON responses
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Non-JSON response:', res.status, res.statusText);
+                alert(`Server-Fehler: ${res.status} ${res.statusText}`);
+                setAssigning(false);
+                return;
+            }
+
             const data = await res.json();
             if (res.ok && data.success) {
                 alert(data.message || 'Lead erfolgreich zugewiesen!');
@@ -275,10 +285,12 @@ function LeadDetailModal({
                     'Lead not found': 'Lead nicht gefunden.',
                     'Access denied': 'Zugriff verweigert.',
                     'Team member not found': 'Team-Mitglied nicht gefunden.',
-                    'Team member not in same organization': 'Team-Mitglied gehört nicht zur Organisation.',
+                    'Team member not in same organization': 'Team-Mitglied gehort nicht zur Organisation.',
                     'Failed to assign lead': 'Zuweisung fehlgeschlagen. Bitte erneut versuchen.',
                 };
-                const errorMsg = data.error ? (errorMessages[data.error] || data.error) : 'Fehler beim Zuweisen';
+                const apiError = data.error || data.message || '';
+                const errorMsg = apiError ? (errorMessages[apiError] || apiError) : `Fehler (Status: ${res.status})`;
+                console.error('Assign error:', { status: res.status, data });
                 alert(errorMsg);
             }
         } catch (error) {
