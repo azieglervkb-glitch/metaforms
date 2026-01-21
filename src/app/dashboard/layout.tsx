@@ -60,14 +60,7 @@ export default async function DashboardLayout({
                         <span className="text-gray-400">|</span>
                         <span className="text-gray-600 text-sm">LeadSignal</span>
 
-                        {user?.is_super_admin && (
-                            <Link
-                                href="/admin"
-                                className="ml-2 px-2 py-0.5 bg-gray-900 text-white text-[10px] rounded uppercase font-bold tracking-wider hover:bg-gray-700 transition-colors"
-                            >
-                                Admin
-                            </Link>
-                        )}
+                        {/* Admin Link REMOVED as per user request */}
                     </div>
 
                     {/* Navigation */}
