@@ -13,7 +13,7 @@ interface EmailTemplate {
     updated_at: string;
 }
 
-// Default template for lead assignment emails - Outrnk UI Style
+// Default template for lead assignment emails - Outrnk UI Style (Light + Blue)
 const DEFAULT_TEMPLATE = {
     subject: 'Neuer Lead: {{lead_name}}',
     html_content: `<!DOCTYPE html>
@@ -22,34 +22,39 @@ const DEFAULT_TEMPLATE = {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #18181b; border-radius: 16px; overflow: hidden; border: 1px solid #27272a;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
 
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
-            <td style="padding: 32px 32px 24px; border-bottom: 1px solid #27272a;">
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <span style="display: inline-block; padding: 6px 12px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 6px; color: #fff; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Neuer Lead</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-top: 16px;">
-                    <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 600; line-height: 1.3;">{{lead_name}}</h1>
+                    <span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">.</span></span>
+                    <span style="color: #d1d5db; margin: 0 8px;">|</span>
+                    <span style="color: #6b7280; font-size: 14px;">LeadSignal</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
+          <!-- Lead Badge + Name -->
+          <tr>
+            <td style="padding: 24px 32px 16px;">
+              <span style="display: inline-block; padding: 4px 10px; background-color: #dbeafe; border-radius: 4px; color: #1d4ed8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Neuer Lead</span>
+              <h1 style="margin: 12px 0 0; color: #111827; font-size: 22px; font-weight: 600; line-height: 1.3;">{{lead_name}}</h1>
+            </td>
+          </tr>
+
           <!-- Greeting -->
           <tr>
-            <td style="padding: 24px 32px 0;">
-              <p style="margin: 0; color: #a1a1aa; font-size: 15px; line-height: 1.6;">
+            <td style="padding: 0 32px 20px;">
+              <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
                 Hallo {{assignee_name}}, dir wurde ein neuer Lead zugewiesen.
               </p>
             </td>
@@ -57,33 +62,33 @@ const DEFAULT_TEMPLATE = {
 
           <!-- Lead Details Card -->
           <tr>
-            <td style="padding: 20px 32px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #27272a; border-radius: 12px; overflow: hidden;">
+            <td style="padding: 0 32px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
                 <tr>
-                  <td style="padding: 20px;">
+                  <td style="padding: 16px;">
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding: 8px 0;">
-                          <span style="color: #71717a; font-size: 13px; display: block; margin-bottom: 4px;">Name</span>
-                          <span style="color: #fafafa; font-size: 15px; font-weight: 500;">{{lead_name}}</span>
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">Name</span>
+                          <span style="color: #111827; font-size: 14px; font-weight: 500;">{{lead_name}}</span>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 8px 0; border-top: 1px solid #3f3f46;">
-                          <span style="color: #71717a; font-size: 13px; display: block; margin-bottom: 4px;">E-Mail</span>
-                          <a href="mailto:{{lead_email}}" style="color: #60a5fa; font-size: 15px; text-decoration: none;">{{lead_email}}</a>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">E-Mail</span>
+                          <a href="mailto:{{lead_email}}" style="color: #0052FF; font-size: 14px; text-decoration: none;">{{lead_email}}</a>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 8px 0; border-top: 1px solid #3f3f46;">
-                          <span style="color: #71717a; font-size: 13px; display: block; margin-bottom: 4px;">Telefon</span>
-                          <a href="tel:{{lead_phone}}" style="color: #60a5fa; font-size: 15px; text-decoration: none;">{{lead_phone}}</a>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">Telefon</span>
+                          <a href="tel:{{lead_phone}}" style="color: #0052FF; font-size: 14px; text-decoration: none;">{{lead_phone}}</a>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 8px 0; border-top: 1px solid #3f3f46;">
-                          <span style="color: #71717a; font-size: 13px; display: block; margin-bottom: 4px;">Formular</span>
-                          <span style="color: #a78bfa; font-size: 15px; font-weight: 500;">{{form_name}}</span>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">Formular</span>
+                          <span style="color: #111827; font-size: 14px; font-weight: 500;">{{form_name}}</span>
                         </td>
                       </tr>
                     </table>
@@ -96,18 +101,18 @@ const DEFAULT_TEMPLATE = {
           <!-- Rating Section -->
           <tr>
             <td style="padding: 0 32px 24px;">
-              <p style="margin: 0 0 16px; color: #a1a1aa; font-size: 14px;">
-                Wie war das Gespräch? Dein Feedback verbessert die Lead-Qualität.
+              <p style="margin: 0 0 12px; color: #6b7280; font-size: 14px;">
+                Wie war das Gespräch?
               </p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="48%" style="padding-right: 8px;">
-                    <a href="{{qualified_url}}" style="display: block; text-align: center; padding: 14px 20px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px;">
+                  <td width="48%" style="padding-right: 6px;">
+                    <a href="{{qualified_url}}" style="display: block; text-align: center; padding: 12px 16px; background-color: #0052FF; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
                       Guter Lead
                     </a>
                   </td>
-                  <td width="48%" style="padding-left: 8px;">
-                    <a href="{{unqualified_url}}" style="display: block; text-align: center; padding: 14px 20px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px;">
+                  <td width="48%" style="padding-left: 6px;">
+                    <a href="{{unqualified_url}}" style="display: block; text-align: center; padding: 12px 16px; background-color: #f3f4f6; color: #374151; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px; border: 1px solid #d1d5db;">
                       Schlechter Lead
                     </a>
                   </td>
@@ -116,17 +121,16 @@ const DEFAULT_TEMPLATE = {
             </td>
           </tr>
 
-          <!-- Portal Section -->
+          <!-- Portal Link -->
           <tr>
             <td style="padding: 0 32px 24px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #3b0764 0%, #581c87 100%); border-radius: 12px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
                 <tr>
-                  <td style="padding: 20px;">
-                    <p style="margin: 0 0 4px; color: #e9d5ff; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Dein Portal</p>
-                    <p style="margin: 0 0 16px; color: #c4b5fd; font-size: 14px; line-height: 1.5;">
-                      Alle deine Leads verwalten - ohne Login.
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 12px; color: #1e40af; font-size: 14px; font-weight: 500;">
+                      Alle deine Leads im Portal verwalten
                     </p>
-                    <a href="{{portal_url}}" style="display: inline-block; padding: 12px 24px; background: #fff; color: #581c87; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                    <a href="{{portal_url}}" style="display: inline-block; padding: 10px 20px; background-color: #0052FF; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
                       Portal öffnen
                     </a>
                   </td>
@@ -135,19 +139,10 @@ const DEFAULT_TEMPLATE = {
             </td>
           </tr>
 
-          <!-- Dashboard Link -->
-          <tr>
-            <td style="padding: 0 32px 32px;">
-              <a href="{{dashboard_url}}" style="display: inline-block; padding: 12px 20px; background: #27272a; color: #a1a1aa; text-decoration: none; border-radius: 8px; font-size: 14px; border: 1px solid #3f3f46;">
-                Im Dashboard öffnen
-              </a>
-            </td>
-          </tr>
-
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 32px; background-color: #0f0f10; border-top: 1px solid #27272a;">
-              <p style="margin: 0; color: #52525b; font-size: 12px; text-align: center; line-height: 1.6;">
+            <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.6;">
                 Automatisch gesendet von LeadSignal<br>
                 Rating-Link ist 7 Tage gültig
               </p>
