@@ -59,10 +59,10 @@ export default async function DashboardPage() {
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-4">
-                <StatCard title="Leads Gesamt" value={totalLeads} borderColor="border-l-blue-500" />
-                <StatCard title="Neu" value={newLeads} borderColor="border-l-yellow-500" valueColor="text-yellow-600" />
-                <StatCard title="Qualifiziert" value={qualifiedLeads} borderColor="border-l-green-500" valueColor="text-green-600" />
-                <StatCard title="Signale gesendet" value={signalsSent} borderColor="border-l-purple-500" valueColor="text-purple-600" />
+                <StatCard title="Leads Gesamt" value={totalLeads} borderColor="border-l-blue-600" valueColor="text-blue-600" />
+                <StatCard title="Neu" value={newLeads} borderColor="border-l-blue-500" valueColor="text-blue-500" />
+                <StatCard title="Qualifiziert" value={qualifiedLeads} borderColor="border-l-blue-400" valueColor="text-blue-400" />
+                <StatCard title="Signale gesendet" value={signalsSent} borderColor="border-l-blue-300" valueColor="text-blue-300" />
             </div>
 
             {/* Quick Actions */}
@@ -82,11 +82,11 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-green-500">
+                <Card className="border-l-4 border-l-blue-500">
                     <CardContent className="p-6">
                         <h3 className="font-semibold text-gray-900 mb-2">Meta verbinden</h3>
                         <p className="text-sm text-gray-500 mb-4">Lead Forms empfangen und Qualitätsignale senden</p>
-                        <Link href="/dashboard/settings" className="px-4 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 inline-block">
+                        <Link href="/dashboard/settings" className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-block">
                             Einstellungen öffnen
                         </Link>
                     </CardContent>
@@ -94,11 +94,11 @@ export default async function DashboardPage() {
             </div>
 
             {/* Team */}
-            <Card className="border-l-4 border-l-purple-500">
+            <Card className="border-l-4 border-l-blue-500">
                 <CardContent className="p-6">
                     <h3 className="font-semibold text-gray-900 mb-2">Team verwalten</h3>
                     <p className="text-sm text-gray-500 mb-4">Mitarbeiter hinzufügen und Leads zuweisen</p>
-                    <Link href="/dashboard/team" className="px-4 py-2 rounded-lg bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 inline-block">
+                    <Link href="/dashboard/team" className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-block">
                         Team öffnen
                     </Link>
                 </CardContent>

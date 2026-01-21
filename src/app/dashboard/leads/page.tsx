@@ -172,10 +172,9 @@ export default function LeadsPage() {
                     <button
                         onClick={createTestLead}
                         disabled={loading}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-medium hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                        <span>🧪</span>
-                        <span>Test-Lead erstellen</span>
+                        Test-Lead erstellen
                     </button>
 
                     {/* Form Filter */}
@@ -298,25 +297,25 @@ export default function LeadsPage() {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => updateLeadQuality(lead.id, 'qualified')}
-                                                    className="px-3 py-1 rounded bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200"
+                                                    className="px-3 py-1 rounded bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 border border-green-200"
                                                     title="Als qualifiziert markieren"
                                                 >
-                                                    ✓
+                                                    Qualifiziert
                                                 </button>
                                                 <button
                                                     onClick={() => updateLeadQuality(lead.id, 'unqualified')}
-                                                    className="px-3 py-1 rounded bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200"
+                                                    className="px-3 py-1 rounded bg-gray-50 text-gray-700 text-xs font-medium hover:bg-gray-100 border border-gray-200"
                                                     title="Als unqualifiziert markieren"
                                                 >
-                                                    ✗
+                                                    Ablehnen
                                                 </button>
                                                 {lead.status === 'qualified' && !lead.quality_feedback_sent && (
                                                     <button
                                                         onClick={() => sendQualitySignal(lead.id)}
-                                                        className="px-3 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200"
+                                                        className="px-3 py-1 rounded bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 border border-blue-200"
                                                         title="Signal an Meta senden"
                                                     >
-                                                        📤
+                                                        Meta Signal
                                                     </button>
                                                 )}
                                             </div>
