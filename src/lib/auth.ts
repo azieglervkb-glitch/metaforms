@@ -3,7 +3,14 @@ import jwt from 'jsonwebtoken';
 import { query, queryOne } from './db';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'leadsignal-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+
+// TypeScript type guard - after the check above, JWT_SECRET is definitely a string
+const jwtSecret: string = JWT_SECRET;
 
 export interface User {
     id: string;
@@ -32,14 +39,14 @@ export function createToken(user: User): string {
             orgId: user.org_id,
             isSuperAdmin: user.is_super_admin || false
         },
-        JWT_SECRET,
+        jwtSecret,
         { expiresIn: '7d' }
     );
 }
 
 export function verifyToken(token: string): { userId: string; email: string; role: string; orgId: string; isSuperAdmin?: boolean } | null {
     try {
-        return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string; orgId: string; isSuperAdmin?: boolean };
+        return jwt.verify(token, jwtSecret) as { userId: string; email: string; role: string; orgId: string; isSuperAdmin?: boolean };
     } catch {
         return null;
     }

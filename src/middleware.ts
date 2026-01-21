@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'leadsignal-secret-key-change-in-production'
-);
+const jwtSecretString = process.env.JWT_SECRET;
+if (!jwtSecretString) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretString);
 
 async function verifyTokenEdge(token: string): Promise<boolean> {
     try {

@@ -29,10 +29,14 @@ export async function runMigrations() {
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(255),
         role VARCHAR(50) DEFAULT 'member',
+        is_super_admin BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `);
+
+    // Add is_super_admin if not exists (for existing databases)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN DEFAULT false`);
 
     // Team members table (for lead assignment)
     await pool.query(`
@@ -93,7 +97,7 @@ export async function runMigrations() {
       )
     `);
 
-    // Add columns if not exists
+    // Add columns if not exists (for existing databases)
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES team_members(id) ON DELETE SET NULL`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE`);
@@ -115,6 +119,34 @@ export async function runMigrations() {
       )
     `);
 
+    // Email templates table (custom email templates per organization)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS email_templates (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        template_type VARCHAR(50) NOT NULL DEFAULT 'lead_assignment',
+        subject VARCHAR(500) NOT NULL,
+        html_content TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(org_id, template_type)
+      )
+    `);
+
+    // Team member portal tokens (for one-time login links)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS team_member_tokens (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        team_member_id UUID REFERENCES team_members(id) ON DELETE CASCADE,
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        token VARCHAR(64) NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT true,
+        last_used_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
@@ -122,6 +154,9 @@ export async function runMigrations() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON lead_email_tokens(token)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_templates_org_id ON email_templates(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_member_tokens_token ON team_member_tokens(token)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_member_tokens_member ON team_member_tokens(team_member_id)`);
 
     console.log('Database migrations completed successfully!');
   } catch (error) {

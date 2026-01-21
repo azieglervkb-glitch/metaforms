@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        console.log('Webhook received:', JSON.stringify(body, null, 2));
 
         // Process each entry
         for (const entry of body.entry || []) {

@@ -38,33 +38,30 @@ export interface Lead {
   id: string;
   org_id: string;
   meta_lead_id: string;
-  form_id: string;
+  form_id: string | null;
   form_name: string | null;
-  campaign_id: string | null;
-  campaign_name: string | null;
   ad_id: string | null;
-  ad_name: string | null;
-  
+
   // Lead Data
-  first_name: string | null;
-  last_name: string | null;
+  full_name: string | null;
   email: string | null;
   phone: string | null;
-  custom_fields: Record<string, string>;
-  
+  raw_data: Record<string, unknown> | null;
+
   // Status & Quality
   status: LeadStatus;
-  quality_score: number | null;
-  quality_sent_to_meta: boolean;
-  quality_sent_at: string | null;
-  
-  // Validation
-  phone_valid: boolean | null;
-  email_valid: boolean | null;
-  
+  quality_status: 'pending' | 'qualified' | 'unqualified';
+  quality_feedback_sent: boolean;
+  quality_feedback_sent_at: string | null;
+  rated_via: 'dashboard' | 'email' | 'portal' | null;
+
+  // Assignment
+  assigned_to: string | null;
+  assigned_at: string | null;
+
   // Notes
   notes: string | null;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;

@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
         if (!email || !password || !fullName) {
             return NextResponse.json(
-                { error: 'Alle Felder sind erforderlich', received: { email: !!email, password: !!password, fullName: !!fullName } },
+                { error: 'Alle Felder sind erforderlich' },
                 { status: 400 }
             );
         }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
         cookieStore.set('auth_token', token, {
             httpOnly: true,
-            secure: false, // Disable for sslip.io domain
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7, // 7 days
             path: '/',
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error('Registration error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Ein Fehler ist aufgetreten', stack: error instanceof Error ? error.stack : undefined },
+            { error: 'Ein Fehler ist aufgetreten' },
             { status: 500 }
         );
     }

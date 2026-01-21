@@ -36,7 +36,7 @@ export default async function DashboardLayout({
                                 ? 'Ihr Account wurde deaktiviert. Bitte kontaktieren Sie den Support.'
                                 : 'Vielen Dank für Ihre Registrierung. Ihr Account wird derzeit überprüft und in Kürze freigeschaltet.'}
                         </p>
-                        <form action="/api/auth/signout" method="post">
+                        <form action="/api/auth/logout" method="post">
                             <button className="text-sm text-gray-500 hover:text-gray-900 underline">
                                 Abmelden
                             </button>
@@ -77,7 +77,7 @@ export default async function DashboardLayout({
                     </nav>
 
                     {/* Right side */}
-                    <form action="/api/auth/signout" method="post">
+                    <form action="/api/auth/logout" method="post">
                         <button
                             type="submit"
                             className="btn-secondary text-sm py-2 px-4"

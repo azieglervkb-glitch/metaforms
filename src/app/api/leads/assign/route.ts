@@ -5,13 +5,28 @@ import { verifyToken } from '@/lib/auth';
 import { sendLeadAssignmentEmail } from '@/lib/email';
 
 interface AssignLeadBody {
+    leadId: string;
     teamMemberId: string;
 }
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+interface Lead {
+    id: string;
+    org_id: string;
+    full_name: string;
+    email: string;
+    phone: string;
+    form_name: string;
+}
+
+interface TeamMember {
+    id: string;
+    org_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+}
+
+export async function POST(request: NextRequest) {
     try {
         // Verify authentication
         const authHeader = request.headers.get('authorization');
@@ -26,12 +41,15 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const { id: leadId } = await params;
         const body: AssignLeadBody = await request.json();
-        const { teamMemberId } = body;
+        const { leadId, teamMemberId } = body;
+
+        if (!leadId || !teamMemberId) {
+            return NextResponse.json({ error: 'leadId and teamMemberId are required' }, { status: 400 });
+        }
 
         // Get the lead
-        const lead = await queryOne<{ id: string; org_id: string; full_name: string; email: string; phone: string; form_name: string | null }>(
+        const lead = await queryOne<Lead>(
             'SELECT id, org_id, full_name, email, phone, form_name FROM leads WHERE id = $1',
             [leadId]
         );
@@ -46,17 +64,17 @@ export async function POST(
         }
 
         // Get the team member to assign to
-        const assignee = await queryOne<{ id: string; org_id: string; email: string; first_name: string; last_name: string }>(
-            'SELECT id, org_id, email, first_name, last_name FROM team_members WHERE id = $1',
+        const teamMember = await queryOne<TeamMember>(
+            'SELECT id, org_id, first_name, last_name, email FROM team_members WHERE id = $1',
             [teamMemberId]
         );
 
-        if (!assignee) {
+        if (!teamMember) {
             return NextResponse.json({ error: 'Team member not found' }, { status: 404 });
         }
 
         // Verify team member belongs to same organization
-        if (assignee.org_id !== payload.orgId) {
+        if (teamMember.org_id !== payload.orgId) {
             return NextResponse.json({ error: 'Team member not in same organization' }, { status: 403 });
         }
 
@@ -66,19 +84,18 @@ export async function POST(
             [teamMemberId, leadId]
         );
 
-        // Send email notification with custom template
-        const assigneeName = `${assignee.first_name} ${assignee.last_name}`;
+        // Send email notification with portal link
         try {
             await sendLeadAssignmentEmail({
-                to: assignee.email,
-                assigneeName: assigneeName,
+                to: teamMember.email,
+                assigneeName: `${teamMember.first_name} ${teamMember.last_name}`,
                 leadName: lead.full_name || 'Unbekannt',
                 leadEmail: lead.email || '',
                 leadPhone: lead.phone || '',
                 leadId: lead.id,
                 formName: lead.form_name || undefined,
                 orgId: payload.orgId,
-                teamMemberId: teamMemberId,
+                teamMemberId: teamMember.id,
             });
         } catch (emailError) {
             console.error('Failed to send assignment email:', emailError);
@@ -87,63 +104,17 @@ export async function POST(
 
         return NextResponse.json({
             success: true,
-            message: `Lead wurde ${assigneeName} zugewiesen. E-Mail-Benachrichtigung wurde gesendet.`,
+            message: `Lead wurde ${teamMember.first_name} ${teamMember.last_name} zugewiesen. E-Mail wurde gesendet.`,
             assignee: {
-                id: assignee.id,
-                name: assigneeName,
-                email: assignee.email,
+                id: teamMember.id,
+                name: `${teamMember.first_name} ${teamMember.last_name}`,
+                email: teamMember.email,
             }
         });
     } catch (error) {
         console.error('Failed to assign lead:', error);
         return NextResponse.json(
             { error: 'Failed to assign lead' },
-            { status: 500 }
-        );
-    }
-}
-
-// Unassign a lead
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '') || request.cookies.get('auth_token')?.value;
-
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = verifyToken(token);
-        if (!payload) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
-        const { id: leadId } = await params;
-
-        // Verify lead belongs to user's organization
-        const lead = await queryOne<{ org_id: string }>(
-            'SELECT org_id FROM leads WHERE id = $1',
-            [leadId]
-        );
-
-        if (!lead || lead.org_id !== payload.orgId) {
-            return NextResponse.json({ error: 'Lead not found or access denied' }, { status: 404 });
-        }
-
-        // Update lead to remove assignment
-        await query(
-            'UPDATE leads SET assigned_to = NULL, assigned_at = NULL, updated_at = NOW() WHERE id = $1',
-            [leadId]
-        );
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Failed to unassign lead:', error);
-        return NextResponse.json(
-            { error: 'Failed to unassign lead' },
             { status: 500 }
         );
     }
