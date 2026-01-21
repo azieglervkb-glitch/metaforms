@@ -1,5 +1,6 @@
 // Dashboard layout with outrnk style navigation
 import Link from 'next/link';
+import { getCurrentUser } from '@/lib/auth';
 
 const NAV_ITEMS = [
     { href: '/dashboard', label: 'Übersicht' },
@@ -10,11 +11,13 @@ const NAV_ITEMS = [
     { href: '/dashboard/settings', label: 'Einstellungen' },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const user = await getCurrentUser();
+
     return (
         <div className="min-h-screen">
             {/* Top Header Bar - outrnk style */}
@@ -27,6 +30,15 @@ export default function DashboardLayout({
                         </span>
                         <span className="text-gray-400">|</span>
                         <span className="text-gray-600 text-sm">LeadSignal</span>
+
+                        {user?.is_super_admin && (
+                            <Link
+                                href="/admin"
+                                className="ml-2 px-2 py-0.5 bg-gray-900 text-white text-[10px] rounded uppercase font-bold tracking-wider hover:bg-gray-700 transition-colors"
+                            >
+                                Admin
+                            </Link>
+                        )}
                     </div>
 
                     {/* Navigation */}
