@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATE = {
                   <td>
                     <span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">.</span></span>
                     <span style="color: #d1d5db; margin: 0 8px;">|</span>
-                    <span style="color: #6b7280; font-size: 14px;">LeadSignal</span>
+                    <span style="color: #6b7280; font-size: 14px;">Leads</span>
                   </td>
                 </tr>
               </table>
@@ -143,7 +143,7 @@ const DEFAULT_TEMPLATE = {
           <tr>
             <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.6;">
-                Automatisch gesendet von LeadSignal<br>
+                Automatisch gesendet von outrnk. Leads<br>
                 Rating-Link ist 7 Tage gültig
               </p>
             </td>

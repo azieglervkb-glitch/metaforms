@@ -26,7 +26,7 @@ export default function PushNotificationManager({ onNewLead }: PushNotificationM
 
         if (result === 'granted') {
             // Show test notification
-            new Notification('LeadSignal Benachrichtigungen aktiviert! 🔔', {
+            new Notification('outrnk Leads Benachrichtigungen aktiviert! 🔔', {
                 body: 'Du wirst jetzt bei neuen Leads benachrichtigt.',
                 icon: '/icon.png',
             });

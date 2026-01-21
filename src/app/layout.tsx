@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LeadSignal - Trainiere Meta's Algorithmus auf echte Kunden",
-  description: "Weniger Schrott-Leads, mehr echte Kunden. LeadSignal sendet Qualitäts-Feedback an Meta, damit der Algorithmus lernt, Menschen zu finden, die wirklich kaufen.",
+  title: "outrnk Leads - Trainiere Meta's Algorithmus auf echte Kunden",
+  description: "Weniger Schrott-Leads, mehr echte Kunden. outrnk Leads sendet Qualitäts-Feedback an Meta, damit der Algorithmus lernt, Menschen zu finden, die wirklich kaufen.",
 };
 
 export default function RootLayout({

@@ -58,7 +58,7 @@ export default async function DashboardLayout({
                             outrnk<span style={{ color: '#0052FF' }}>.</span>
                         </span>
                         <span className="text-gray-400">|</span>
-                        <span className="text-gray-600 text-sm">LeadSignal</span>
+                        <span className="text-gray-600 text-sm">Leads</span>
 
                         {/* Admin Link REMOVED as per user request */}
                     </div>

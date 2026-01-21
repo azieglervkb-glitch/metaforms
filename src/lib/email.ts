@@ -63,7 +63,7 @@ const DEFAULT_TEMPLATE: EmailTemplate = {
                   <td>
                     <span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">.</span></span>
                     <span style="color: #d1d5db; margin: 0 8px;">|</span>
-                    <span style="color: #6b7280; font-size: 14px;">LeadSignal</span>
+                    <span style="color: #6b7280; font-size: 14px;">Leads</span>
                   </td>
                 </tr>
               </table>
@@ -170,7 +170,7 @@ const DEFAULT_TEMPLATE: EmailTemplate = {
           <tr>
             <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.6;">
-                Automatisch gesendet von LeadSignal<br>
+                Automatisch gesendet von outrnk. Leads<br>
                 Rating-Link ist 7 Tage gültig
               </p>
             </td>
@@ -321,7 +321,7 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
     const htmlContent = replaceTemplateVariables(template.html_content, variables);
 
     const { data, error } = await resend.emails.send({
-      from: 'LeadSignal <noreply@leadsignal.de>',
+      from: 'outrnk Leads <noreply@leadsignal.de>',
       to: params.to,
       subject,
       html: htmlContent,
@@ -353,7 +353,7 @@ export async function sendNewLeadNotification(adminEmail: string, lead: LeadInfo
       return { success: false, error: 'Resend not configured' };
     }
     const { data, error } = await resend.emails.send({
-      from: 'LeadSignal <noreply@leadsignal.de>',
+      from: 'outrnk Leads <noreply@leadsignal.de>',
       to: adminEmail,
       subject: `Neuer Lead eingegangen: ${lead.fullName || lead.email || 'Neuer Kontakt'}`,
       html: `

@@ -1,4 +1,4 @@
-// Database Types for LeadSignal
+// Database Types for outrnk Leads
 
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'junk' | 'not_reached' | 'closed';
 

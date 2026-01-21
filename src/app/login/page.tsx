@@ -45,8 +45,8 @@ export default function LoginPage() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900">LeadSignal</h1>
-                    <p className="text-gray-500 mt-1">Lead Management System</p>
+                    <h1 className="text-2xl font-bold text-gray-900">outrnk<span style={{ color: '#0052FF' }}>.</span></h1>
+                    <p className="text-gray-500 mt-1">Leads</p>
                 </div>
 
                 {/* Card */}

@@ -6,8 +6,8 @@ export default function FAQPage() {
             {/* Header */}
             <header className="bg-white border-b">
                 <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <Link href="/" className="text-xl font-bold text-blue-600">
-                        LeadSignal
+                    <Link href="/" className="text-xl font-bold text-gray-900">
+                        outrnk<span style={{ color: '#0052FF' }}>.</span> <span className="text-gray-500 font-normal text-sm ml-1">Leads</span>
                     </Link>
                     <Link
                         href="/login"
@@ -21,17 +21,17 @@ export default function FAQPage() {
             <main className="max-w-4xl mx-auto px-6 py-12">
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">Häufige Fragen</h1>
                 <p className="text-lg text-gray-600 mb-12">
-                    Alles was du über LeadSignal und Meta Qualitäts-Feedback wissen musst.
+                    Alles was du über outrnk Leads und Meta Qualitäts-Feedback wissen musst.
                 </p>
 
                 <div className="space-y-8">
-                    {/* What is LeadSignal */}
+                    {/* What is outrnk Leads */}
                     <FAQSection
-                        title="Was ist LeadSignal?"
+                        title="Was ist outrnk Leads?"
                         emoji="🎯"
                     >
                         <p>
-                            LeadSignal ist ein Tool, das deine Meta Lead Forms mit einem Qualitäts-Feedback-System verbindet.
+                            outrnk Leads ist ein Tool, das deine Meta Lead Forms mit einem Qualitäts-Feedback-System verbindet.
                             Wenn du Leads als &quot;qualifiziert&quot; oder &quot;unqualifiziert&quot; markierst, senden wir diese Information
                             automatisch an Meta zurück.
                         </p>
@@ -160,11 +160,11 @@ export default function FAQPage() {
 
                     {/* Pricing */}
                     <FAQSection
-                        title="Was kostet LeadSignal?"
+                        title="Was kostet outrnk Leads?"
                         emoji="💳"
                     >
                         <p>
-                            LeadSignal befindet sich aktuell in der Beta-Phase. Details zur Preisgestaltung
+                            outrnk Leads befindet sich aktuell in der Beta-Phase. Details zur Preisgestaltung
                             werden bald bekannt gegeben.
                         </p>
                         <div className="mt-4">
@@ -195,7 +195,7 @@ export default function FAQPage() {
 
             {/* Footer */}
             <footer className="border-t mt-16 py-8 text-center text-gray-500 text-sm">
-                <p>© 2026 LeadSignal. Alle Rechte vorbehalten.</p>
+                <p>© 2026 outrnk. Alle Rechte vorbehalten.</p>
             </footer>
         </div>
     );

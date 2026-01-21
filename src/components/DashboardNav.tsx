@@ -33,7 +33,7 @@ export default function DashboardNav() {
                         outrnk<span style={{ color: '#0052FF' }}>.</span>
                     </h1>
                     <span className="text-gray-400">|</span>
-                    <span className="text-gray-600 text-sm">LeadSignal</span>
+                    <span className="text-gray-600 text-sm">Leads</span>
                 </div>
 
                 <div className="flex items-center gap-4">

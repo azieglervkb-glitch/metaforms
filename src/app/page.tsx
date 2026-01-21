@@ -7,9 +7,9 @@ export default function HomePage() {
       <header className="border-b">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-bold text-gray-900">LeadSignal</span>
+            <span className="text-xl font-bold text-gray-900">outrnk<span style={{ color: '#0052FF' }}>.</span></span>
             <span className="text-gray-300">|</span>
-            <span className="text-gray-500 text-sm">Lead Management</span>
+            <span className="text-gray-500 text-sm">Leads</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/faq" className="text-gray-600 hover:text-gray-900 font-medium text-sm">
@@ -42,7 +42,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
-            Meta optimiert auf billige Leads, nicht auf gute. LeadSignal sendet Qualitäts-Feedback
+            Meta optimiert auf billige Leads, nicht auf gute. outrnk Leads sendet Qualitäts-Feedback
             an Meta, damit der Algorithmus lernt, Menschen zu finden, die wirklich kaufen.
           </p>
 
@@ -74,7 +74,7 @@ export default function HomePage() {
             <StepCard
               number="1"
               title="Leads kommen rein"
-              description="Deine Meta Lead Forms schicken Leads automatisch an LeadSignal."
+              description="Deine Meta Lead Forms schicken Leads automatisch an outrnk."
             />
             <StepCard
               number="2"
@@ -143,7 +143,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t py-8 px-4">
         <div className="container mx-auto text-center text-gray-500 text-sm">
-          © 2025 LeadSignal. Made with ❤️ for Meta Advertisers.
+          © 2025 outrnk. Made with ❤️ for Meta Advertisers.
         </div>
       </footer>
     </div>

@@ -270,7 +270,7 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h3 className="font-semibold text-gray-900 mb-1">Hilfe benötigt?</h3>
-                                <p className="text-sm text-gray-600">Erfahre wie LeadSignal funktioniert und was Qualitäts-Feedback bringt.</p>
+                                <p className="text-sm text-gray-600">Erfahre wie outrnk Leads funktioniert und was Qualitäts-Feedback bringt.</p>
                             </div>
                             <Link
                                 href="/faq"
@@ -308,7 +308,7 @@ function PushNotificationToggle() {
         const result = await Notification.requestPermission();
         setPermission(result);
         if (result === 'granted') {
-            new Notification('LeadSignal', {
+            new Notification('outrnk Leads', {
                 body: 'Push-Benachrichtigungen aktiviert!',
             });
         }

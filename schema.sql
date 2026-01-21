@@ -1,4 +1,4 @@
--- LeadSignal PostgreSQL Schema
+-- outrnk Leads PostgreSQL Schema
 -- Complete schema matching migrate.ts
 
 -- Enable UUID extension

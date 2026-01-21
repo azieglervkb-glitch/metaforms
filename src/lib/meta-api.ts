@@ -237,7 +237,7 @@ export function createQualifiedLeadEvent(
         action_source: 'system_generated',
         user_data: userData,
         custom_data: {
-            lead_event_source: 'LeadSignal',
+            lead_event_source: 'outrnk_leads',
             qualification_status: 'qualified',
         },
     };
