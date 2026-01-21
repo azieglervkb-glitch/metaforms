@@ -95,7 +95,7 @@ export async function runMigrations() {
 
     // Add columns if not exists
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
-    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id) ON DELETE SET NULL`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES team_members(id) ON DELETE SET NULL`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_id VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);

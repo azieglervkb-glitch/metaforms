@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth';
 import { sendLeadAssignmentEmail } from '@/lib/email';
 
 interface AssignLeadBody {
-    userId: string;
+    teamMemberId: string;
 }
 
 export async function POST(
@@ -28,11 +28,11 @@ export async function POST(
 
         const { id: leadId } = await params;
         const body: AssignLeadBody = await request.json();
-        const { userId } = body;
+        const { teamMemberId } = body;
 
         // Get the lead
-        const lead = await queryOne<{ id: string; org_id: string; full_name: string; email: string; phone: string }>(
-            'SELECT id, org_id, full_name, email, phone FROM leads WHERE id = $1',
+        const lead = await queryOne<{ id: string; org_id: string; full_name: string; email: string; phone: string; form_name: string | null }>(
+            'SELECT id, org_id, full_name, email, phone, form_name FROM leads WHERE id = $1',
             [leadId]
         );
 
@@ -45,36 +45,38 @@ export async function POST(
             return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
 
-        // Get the user to assign to
-        const assignee = await queryOne<{ id: string; org_id: string; email: string; full_name: string }>(
-            'SELECT id, org_id, email, full_name FROM users WHERE id = $1',
-            [userId]
+        // Get the team member to assign to
+        const assignee = await queryOne<{ id: string; org_id: string; email: string; first_name: string; last_name: string }>(
+            'SELECT id, org_id, email, first_name, last_name FROM team_members WHERE id = $1',
+            [teamMemberId]
         );
 
         if (!assignee) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Team member not found' }, { status: 404 });
         }
 
-        // Verify user belongs to same organization
+        // Verify team member belongs to same organization
         if (assignee.org_id !== payload.orgId) {
-            return NextResponse.json({ error: 'User not in same organization' }, { status: 403 });
+            return NextResponse.json({ error: 'Team member not in same organization' }, { status: 403 });
         }
 
         // Update lead assignment
         await query(
             'UPDATE leads SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW() WHERE id = $2',
-            [userId, leadId]
+            [teamMemberId, leadId]
         );
 
         // Send email notification
+        const assigneeName = `${assignee.first_name} ${assignee.last_name}`;
         try {
             await sendLeadAssignmentEmail({
                 to: assignee.email,
-                assigneeName: assignee.full_name || assignee.email,
+                assigneeName: assigneeName,
                 leadName: lead.full_name || 'Unbekannt',
                 leadEmail: lead.email || '',
                 leadPhone: lead.phone || '',
                 leadId: lead.id,
+                formName: lead.form_name || undefined,
             });
         } catch (emailError) {
             console.error('Failed to send assignment email:', emailError);
@@ -83,9 +85,10 @@ export async function POST(
 
         return NextResponse.json({
             success: true,
+            message: `Lead wurde ${assigneeName} zugewiesen. E-Mail-Benachrichtigung wurde gesendet.`,
             assignee: {
                 id: assignee.id,
-                name: assignee.full_name,
+                name: assigneeName,
                 email: assignee.email,
             }
         });

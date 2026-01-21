@@ -253,10 +253,10 @@ function LeadDetailModal({
         if (!assignedTo) return;
         setAssigning(true);
         try {
-            const res = await fetch('/api/leads/assign', {
+            const res = await fetch(`/api/leads/${lead.id}/assign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
+                body: JSON.stringify({ teamMemberId: assignedTo }),
             });
             const data = await res.json();
             if (data.success) {

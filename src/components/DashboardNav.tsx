@@ -17,7 +17,12 @@ export default function DashboardNav() {
     const pathname = usePathname();
     const router = useRouter();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
         deleteCookie('auth_token');
         router.push('/login');
     };
