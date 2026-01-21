@@ -10,7 +10,7 @@ interface AssignLeadBody {
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // Verify authentication
@@ -26,7 +26,7 @@ export async function POST(
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const leadId = params.id;
+        const { id: leadId } = await params;
         const body: AssignLeadBody = await request.json();
         const { userId } = body;
 
@@ -101,7 +101,7 @@ export async function POST(
 // Unassign a lead
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authHeader = request.headers.get('authorization');
@@ -116,7 +116,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const leadId = params.id;
+        const { id: leadId } = await params;
 
         // Verify lead belongs to user's organization
         const lead = await queryOne<{ org_id: string }>(
