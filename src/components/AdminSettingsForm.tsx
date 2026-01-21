@@ -4,17 +4,19 @@ import { useState, useEffect } from 'react';
 
 export default function AdminSettingsForm() {
     const [settings, setSettings] = useState({
-        smtp_host: '',
-        smtp_port: '',
-        smtp_user: '',
-        smtp_pass: '',
-        smtp_from: '',
+        app_url: '',
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [envStatus, setEnvStatus] = useState<{
+        resend: boolean;
+        appUrl: string | null;
+        metaToken: boolean;
+    } | null>(null);
 
     useEffect(() => {
+        // Fetch settings
         fetch('/api/admin/settings')
             .then(res => res.json())
             .then(data => {
@@ -23,7 +25,13 @@ export default function AdminSettingsForm() {
                 }
                 setLoading(false);
             })
-            .catch(err => setLoading(false));
+            .catch(() => setLoading(false));
+
+        // Fetch env status
+        fetch('/api/admin/env-status')
+            .then(res => res.json())
+            .then(data => setEnvStatus(data))
+            .catch(() => {});
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,88 +64,84 @@ export default function AdminSettingsForm() {
     if (loading) return <div>Laden...</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-2xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">SMTP E-Mail Konfiguration</h3>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Host</label>
-                        <input
-                            type="text"
-                            name="smtp_host"
-                            value={settings.smtp_host}
-                            onChange={handleChange}
-                            placeholder="smtp.example.com"
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
+        <div className="space-y-6 max-w-2xl">
+            {/* Environment Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">System Status</h3>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-gray-700">E-Mail (Resend)</span>
+                        {envStatus?.resend ? (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                Konfiguriert
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                                Nicht konfiguriert
+                            </span>
+                        )}
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">SMTP Port</label>
-                        <input
-                            type="text"
-                            name="smtp_port"
-                            value={settings.smtp_port}
-                            onChange={handleChange}
-                            placeholder="587"
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
+                    <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-gray-700">Meta API Token</span>
+                        {envStatus?.metaToken ? (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                Konfiguriert
+                            </span>
+                        ) : (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+                                Pro Organisation
+                            </span>
+                        )}
                     </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
-                        <input
-                            type="text"
-                            name="smtp_user"
-                            value={settings.smtp_user}
-                            onChange={handleChange}
-                            autoComplete="off"
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Passwort</label>
-                        <input
-                            type="password"
-                            name="smtp_pass"
-                            value={settings.smtp_pass}
-                            onChange={handleChange}
-                            autoComplete="new-password"
-                            placeholder="••••••••"
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
+                    <div className="flex items-center justify-between py-2">
+                        <span className="text-gray-700">App URL</span>
+                        <span className="text-sm text-gray-500 font-mono">
+                            {envStatus?.appUrl || 'Nicht gesetzt'}
+                        </span>
                     </div>
                 </div>
+                <p className="mt-4 text-xs text-gray-500">
+                    E-Mail wird über Resend gesendet (RESEND_API_KEY in ENV). SMTP wird nicht verwendet.
+                </p>
+            </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Absender E-Mail (From)</label>
-                    <input
-                        type="email"
-                        name="smtp_from"
-                        value={settings.smtp_from}
-                        onChange={handleChange}
-                        placeholder="noreply@mycompany.com"
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                </div>
-
-                <div className="pt-4 border-t">
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors w-full md:w-auto"
-                    >
-                        {saving ? 'Speichern...' : 'Einstellungen speichern'}
-                    </button>
-                    {message && (
-                        <p className={`mt-4 text-sm font-medium ${message.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
-                            {message}
+            {/* App URL Setting */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">App Konfiguration</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            App URL (für Portal Links)
+                        </label>
+                        <input
+                            type="url"
+                            name="app_url"
+                            value={settings.app_url}
+                            onChange={handleChange}
+                            placeholder="https://your-domain.com"
+                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            Wird für Portal-Links verwendet. Falls leer, wird NEXT_PUBLIC_APP_URL aus ENV genutzt.
                         </p>
-                    )}
-                </div>
-            </form>
+                    </div>
+
+                    <div className="pt-4 border-t">
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                            {saving ? 'Speichern...' : 'Speichern'}
+                        </button>
+                        {message && (
+                            <p className={`mt-4 text-sm font-medium ${message.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                                {message}
+                            </p>
+                        )}
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

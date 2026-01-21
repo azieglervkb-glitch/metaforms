@@ -3,6 +3,29 @@ import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import crypto from 'crypto';
 
+// Helper to get app URL from settings, env, or request
+async function getAppUrl(request: NextRequest): Promise<string> {
+    // 1. Try system_settings
+    try {
+        const setting = await queryOne<{ value: string }>(
+            "SELECT value FROM system_settings WHERE key = 'app_url'"
+        );
+        if (setting?.value) return setting.value;
+    } catch {
+        // table might not exist yet
+    }
+
+    // 2. Try env variable
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+    }
+
+    // 3. Use request origin as fallback
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'localhost:3000';
+    return `${protocol}://${host}`;
+}
+
 // GET - Get existing portal token for team member
 export async function GET(
     request: NextRequest,
@@ -41,7 +64,7 @@ export async function GET(
             return NextResponse.json({ error: 'No portal token exists' }, { status: 404 });
         }
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+        const appUrl = await getAppUrl(request);
         const portalUrl = `${appUrl}/portal/${existingToken.token}`;
 
         return NextResponse.json({ portalUrl });
@@ -89,7 +112,7 @@ export async function POST(
         );
 
         if (existingToken) {
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+            const appUrl = await getAppUrl(request);
             const portalUrl = `${appUrl}/portal/${existingToken.token}`;
             return NextResponse.json({ portalUrl, existing: true });
         }
@@ -103,7 +126,7 @@ export async function POST(
             [memberId, payload.orgId, newToken]
         );
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+        const appUrl = await getAppUrl(request);
         const portalUrl = `${appUrl}/portal/${newToken}`;
 
         return NextResponse.json({ portalUrl, created: true });

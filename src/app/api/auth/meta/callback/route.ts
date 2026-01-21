@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
+// Helper to get app URL from settings or env
+async function getAppUrl(request: NextRequest): Promise<string> {
+    try {
+        const setting = await queryOne<{ value: string }>(
+            "SELECT value FROM system_settings WHERE key = 'app_url'"
+        );
+        if (setting?.value) return setting.value;
+    } catch {
+        // table might not exist yet
+    }
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+    }
+    // Use request origin as fallback
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'localhost:3000';
+    return `${protocol}://${host}`;
+}
+
 interface TokenResponse {
     access_token: string;
     token_type: string;
@@ -24,7 +43,7 @@ export async function GET(request: NextRequest) {
         const code = searchParams.get('code');
         const error = searchParams.get('error');
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+        const appUrl = await getAppUrl(request);
 
         // Handle OAuth errors
         if (error) {
@@ -122,7 +141,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${appUrl}/dashboard/settings?success=connected`);
     } catch (error) {
         console.error('Meta OAuth callback error:', error);
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+        const appUrl = await getAppUrl(request);
         return NextResponse.redirect(`${appUrl}/dashboard/settings?error=server_error`);
     }
 }

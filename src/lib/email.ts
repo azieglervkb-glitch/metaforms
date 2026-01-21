@@ -260,11 +260,26 @@ async function getOrCreatePortalToken(teamMemberId: string, orgId: string): Prom
 }
 
 /**
+ * Get app URL from system settings or env
+ */
+async function getAppUrl(): Promise<string> {
+  try {
+    const setting = await queryOne<{ value: string }>(
+      "SELECT value FROM system_settings WHERE key = 'app_url'"
+    );
+    if (setting?.value) return setting.value;
+  } catch {
+    // table might not exist yet
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
+}
+
+/**
  * Send email when lead is assigned to team member
  * Uses custom template if available, otherwise default
  */
 export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+  const appUrl = await getAppUrl();
 
   // Generate rating token
   let ratingToken = '';
@@ -352,6 +367,7 @@ export async function sendNewLeadNotification(adminEmail: string, lead: LeadInfo
     if (!resend) {
       return { success: false, error: 'Resend not configured' };
     }
+    const appUrl = await getAppUrl();
     const { data, error } = await resend.emails.send({
       from: 'outrnk Leads <noreply@leadsignal.de>',
       to: adminEmail,
@@ -384,7 +400,7 @@ export async function sendNewLeadNotification(adminEmail: string, lead: LeadInfo
                 ` : ''}
               </table>
             </div>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de'}/dashboard/leads"
+            <a href="${appUrl}/dashboard/leads"
                style="display: inline-block; background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
               Leads anzeigen
             </a>
