@@ -29,7 +29,11 @@ export default function LoginPage() {
                 return;
             }
 
-            window.location.href = '/dashboard';
+            if (data.user.is_super_admin) {
+                window.location.href = '/admin';
+            } else {
+                window.location.href = '/dashboard';
+            }
         } catch {
             setError('Ein Fehler ist aufgetreten');
             setLoading(false);

@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
                 id: result.user.id,
                 email: result.user.email,
                 fullName: result.user.full_name,
+                is_super_admin: result.user.is_super_admin,
             }
         });
     } catch (error) {

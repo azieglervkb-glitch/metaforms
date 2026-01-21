@@ -1,12 +1,12 @@
+import AdminSettingsForm from '@/components/AdminSettingsForm';
+
 export default function AdminSettingsPage() {
     return (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center">
-            <div className="text-5xl mb-4">⚙️</div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Einstellungen</h2>
-            <p className="text-gray-500 mb-6">Globale Systemeinstellungen (SMTP, Texte, etc.) werden hier bald verfügbar sein.</p>
-            <button disabled className="bg-gray-100 text-gray-400 px-4 py-2 rounded cursor-not-allowed">
-                Kommt bald
-            </button>
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-900">System Einstellungen</h1>
+            <p className="text-gray-500">Konfigurieren Sie hier globale Einstellungen wie E-Mail-Server.</p>
+
+            <AdminSettingsForm />
         </div>
     );
 }
