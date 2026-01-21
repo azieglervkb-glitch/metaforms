@@ -11,11 +11,12 @@ export default function AdminSettingsForm() {
     const [message, setMessage] = useState('');
     const [envStatus, setEnvStatus] = useState<{
         resend: boolean;
-        appUrl: string | null;
+        envAppUrl: string | null;
+        savedAppUrl: string | null;
         metaToken: boolean;
     } | null>(null);
 
-    useEffect(() => {
+    const fetchData = () => {
         // Fetch settings
         fetch('/api/admin/settings')
             .then(res => res.json())
@@ -32,6 +33,10 @@ export default function AdminSettingsForm() {
             .then(res => res.json())
             .then(data => setEnvStatus(data))
             .catch(() => {});
+    };
+
+    useEffect(() => {
+        fetchData();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +57,8 @@ export default function AdminSettingsForm() {
 
             if (res.ok) {
                 setMessage('✅ Einstellungen erfolgreich gespeichert');
+                // Refresh data
+                fetchData();
             } else {
                 setMessage('❌ Fehler beim Speichern');
             }
@@ -62,6 +69,9 @@ export default function AdminSettingsForm() {
     };
 
     if (loading) return <div>Laden...</div>;
+
+    // Determine active app URL
+    const activeAppUrl = envStatus?.savedAppUrl || envStatus?.envAppUrl || 'Nicht gesetzt';
 
     return (
         <div className="space-y-6 max-w-2xl">
@@ -93,21 +103,36 @@ export default function AdminSettingsForm() {
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center justify-between py-2">
-                        <span className="text-gray-700">App URL</span>
-                        <span className="text-sm text-gray-500 font-mono">
-                            {envStatus?.appUrl || 'Nicht gesetzt'}
-                        </span>
+                    <div className="py-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-700">Aktive App URL</span>
+                            {envStatus?.savedAppUrl ? (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                    Gespeichert
+                                </span>
+                            ) : envStatus?.envAppUrl ? (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                                    Aus ENV
+                                </span>
+                            ) : (
+                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+                                    Auto-Detect
+                                </span>
+                            )}
+                        </div>
+                        <div className="text-sm font-mono bg-gray-50 p-2 rounded border break-all">
+                            {activeAppUrl}
+                        </div>
                     </div>
                 </div>
                 <p className="mt-4 text-xs text-gray-500">
-                    E-Mail wird über Resend gesendet (RESEND_API_KEY in ENV). SMTP wird nicht verwendet.
+                    Portal-Links nutzen: 1. Gespeicherte URL, 2. ENV Variable, 3. Request-Domain
                 </p>
             </div>
 
             {/* App URL Setting */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">App Konfiguration</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">App URL konfigurieren</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -118,11 +143,11 @@ export default function AdminSettingsForm() {
                             name="app_url"
                             value={settings.app_url}
                             onChange={handleChange}
-                            placeholder="https://your-domain.com"
+                            placeholder="https://leads.outrnk.io"
                             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                            Wird für Portal-Links verwendet. Falls leer, wird NEXT_PUBLIC_APP_URL aus ENV genutzt.
+                            z.B. https://leads.outrnk.io - wird für Portal-Links in E-Mails verwendet
                         </p>
                     </div>
 
