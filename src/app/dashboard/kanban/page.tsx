@@ -259,14 +259,26 @@ function LeadDetailModal({
                 body: JSON.stringify({ teamMemberId: assignedTo }),
             });
             const data = await res.json();
-            if (data.success) {
-                alert(data.message);
+            if (res.ok && data.success) {
+                alert(data.message || 'Lead erfolgreich zugewiesen!');
                 onUpdate();
             } else {
-                alert(data.error);
+                // Translate common API errors to German
+                const errorMessages: Record<string, string> = {
+                    'Unauthorized': 'Nicht autorisiert. Bitte erneut anmelden.',
+                    'Invalid token': 'Sitzung abgelaufen. Bitte erneut anmelden.',
+                    'Lead not found': 'Lead nicht gefunden.',
+                    'Access denied': 'Zugriff verweigert.',
+                    'Team member not found': 'Team-Mitglied nicht gefunden.',
+                    'Team member not in same organization': 'Team-Mitglied gehört nicht zur Organisation.',
+                    'Failed to assign lead': 'Zuweisung fehlgeschlagen. Bitte erneut versuchen.',
+                };
+                const errorMsg = data.error ? (errorMessages[data.error] || data.error) : 'Fehler beim Zuweisen';
+                alert(errorMsg);
             }
         } catch (error) {
             console.error('Error assigning:', error);
+            alert('Netzwerkfehler beim Zuweisen. Bitte erneut versuchen.');
         }
         setAssigning(false);
     };
