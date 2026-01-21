@@ -32,6 +32,7 @@ interface LeadAssignmentEmailParams {
   leadId: string;
   formName?: string;
   orgId: string; // Added for custom templates
+  teamMemberId?: string; // For portal link
 }
 
 interface EmailTemplate {
@@ -104,6 +105,18 @@ const DEFAULT_TEMPLATE: EmailTemplate = {
       </table>
     </div>
 
+    <!-- Portal Link -->
+    <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 2px solid #c4b5fd; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <h2 style="color: #6b21a8; margin: 0 0 12px; font-size: 18px;">Dein persönliches Portal</h2>
+      <p style="color: #7c3aed; margin: 0 0 16px; font-size: 14px;">
+        Im Portal siehst du alle deine Leads und kannst sie direkt verwalten - ohne Login.
+      </p>
+      <a href="{{portal_url}}"
+         style="display: inline-block; text-align: center; padding: 14px 28px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        Mein Lead-Portal öffnen
+      </a>
+    </div>
+
     <!-- Dashboard Link -->
     <a href="{{dashboard_url}}"
        style="display: inline-block; background: #f3f4f6; color: #374151; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">
@@ -167,6 +180,36 @@ async function generateAndStoreToken(leadId: string): Promise<string> {
 }
 
 /**
+ * Get or create portal token for team member
+ */
+async function getOrCreatePortalToken(teamMemberId: string, orgId: string): Promise<string | null> {
+  try {
+    // Check for existing active token
+    const existing = await queryOne<{ token: string }>(
+      'SELECT token FROM team_member_tokens WHERE team_member_id = $1 AND is_active = true',
+      [teamMemberId]
+    );
+
+    if (existing) {
+      return existing.token;
+    }
+
+    // Create new token
+    const token = crypto.randomBytes(32).toString('hex');
+    await query(
+      `INSERT INTO team_member_tokens (team_member_id, org_id, token, is_active)
+       VALUES ($1, $2, $3, true)`,
+      [teamMemberId, orgId, token]
+    );
+
+    return token;
+  } catch (e) {
+    console.error('Failed to get/create portal token:', e);
+    return null;
+  }
+}
+
+/**
  * Send email when lead is assigned to team member
  * Uses custom template if available, otherwise default
  */
@@ -179,6 +222,15 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
     ratingToken = await generateAndStoreToken(params.leadId);
   } catch (e) {
     console.error('Failed to generate rating token:', e);
+  }
+
+  // Get or create portal token for team member
+  let portalUrl = `${appUrl}/dashboard/kanban`; // fallback
+  if (params.teamMemberId) {
+    const portalToken = await getOrCreatePortalToken(params.teamMemberId, params.orgId);
+    if (portalToken) {
+      portalUrl = `${appUrl}/portal/${portalToken}`;
+    }
   }
 
   const qualifiedUrl = `${appUrl}/api/leads/rate?token=${ratingToken}&rating=qualified`;
@@ -211,6 +263,7 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
       '{{qualified_url}}': qualifiedUrl,
       '{{unqualified_url}}': unqualifiedUrl,
       '{{dashboard_url}}': dashboardUrl,
+      '{{portal_url}}': portalUrl,
     };
 
     // Replace variables in subject and content

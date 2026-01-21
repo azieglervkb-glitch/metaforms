@@ -144,6 +144,17 @@ CREATE TABLE IF NOT EXISTS email_templates (
   UNIQUE(org_id, template_type)
 );
 
+-- Team member portal tokens (for one-time login links)
+CREATE TABLE IF NOT EXISTS team_member_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  team_member_id UUID REFERENCES team_members(id) ON DELETE CASCADE,
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  token VARCHAR(64) NOT NULL UNIQUE,
+  is_active BOOLEAN DEFAULT true,
+  last_used_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
@@ -156,3 +167,5 @@ CREATE INDEX IF NOT EXISTS idx_users_org_id ON users(org_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id);
 CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON lead_email_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_templates_org_id ON email_templates(org_id);
+CREATE INDEX IF NOT EXISTS idx_team_member_tokens_token ON team_member_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_team_member_tokens_member ON team_member_tokens(team_member_id);
