@@ -20,24 +20,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Pixel ID ist erforderlich' }, { status: 400 });
         }
 
+        // Validate pixel ID format (should be numeric)
+        if (!/^\d+$/.test(pixelId)) {
+            return NextResponse.json({ error: 'Ungültiges Pixel ID Format' }, { status: 400 });
+        }
+
         // Check if connection exists
-        const existing = await queryOne(
-            'SELECT id FROM meta_connections WHERE org_id = $1',
+        const existing = await queryOne<{ id: string; access_token: string }>(
+            'SELECT id, access_token FROM meta_connections WHERE org_id = $1',
             [payload.orgId]
         );
 
         if (existing) {
-            // Update existing
+            // Update existing connection with pixel ID
             await queryOne(
                 'UPDATE meta_connections SET pixel_id = $1 WHERE org_id = $2',
                 [pixelId, payload.orgId]
             );
         } else {
-            // Create new (with placeholder access token)
-            await queryOne(
-                'INSERT INTO meta_connections (org_id, access_token, pixel_id) VALUES ($1, $2, $3)',
-                [payload.orgId, 'pending', pixelId]
-            );
+            // No Meta connection exists - user needs to connect Meta first
+            return NextResponse.json({
+                error: 'Bitte verbinde zuerst dein Meta-Konto, bevor du eine Pixel ID hinzufügst'
+            }, { status: 400 });
         }
 
         return NextResponse.json({ success: true });

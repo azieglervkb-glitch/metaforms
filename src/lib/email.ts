@@ -73,17 +73,16 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
   const unqualifiedUrl = `${appUrl}/api/leads/rate?token=${ratingToken}&rating=unqualified`;
 
   if (!process.env.RESEND_API_KEY) {
-    console.log('📧 [DEV] Email would be sent to:', params.to);
-    console.log('Lead:', params);
-    console.log('Qualified URL:', qualifiedUrl);
-    console.log('Unqualified URL:', unqualifiedUrl);
+    // Dev mode: skip email sending
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV] Email skipped - RESEND_API_KEY not configured');
+    }
     return { success: true, dev: true };
   }
 
   try {
     const resend = getResend();
     if (!resend) {
-      console.log('📧 [WARN] Resend not configured');
       return { success: false, error: 'Resend not configured' };
     }
     const { data, error } = await resend.emails.send({
@@ -186,7 +185,6 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
       return { success: false, error };
     }
 
-    console.log('Email sent successfully with rating buttons:', data);
     return { success: true, data };
   } catch (error) {
     console.error('Failed to send email:', error);
@@ -199,14 +197,13 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
  */
 export async function sendNewLeadNotification(adminEmail: string, lead: LeadInfo) {
   if (!process.env.RESEND_API_KEY) {
-    console.log('📧 [DEV] New lead notification would be sent to:', adminEmail);
+    // Dev mode: skip notification
     return { success: true, dev: true };
   }
 
   try {
     const resend = getResend();
     if (!resend) {
-      console.log('📧 [WARN] Resend not configured');
       return { success: false, error: 'Resend not configured' };
     }
     const { data, error } = await resend.emails.send({

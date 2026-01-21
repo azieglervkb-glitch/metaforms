@@ -29,10 +29,14 @@ export async function runMigrations() {
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(255),
         role VARCHAR(50) DEFAULT 'member',
+        is_super_admin BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `);
+
+    // Add is_super_admin if not exists (for existing databases)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN DEFAULT false`);
 
     // Team members table (for lead assignment)
     await pool.query(`
@@ -93,9 +97,9 @@ export async function runMigrations() {
       )
     `);
 
-    // Add columns if not exists
+    // Add columns if not exists (for existing databases)
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
-    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id) ON DELETE SET NULL`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES team_members(id) ON DELETE SET NULL`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_id VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);

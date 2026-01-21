@@ -1,8 +1,15 @@
 import { Pool } from 'pg';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const sslConfig = process.env.DATABASE_SSL === 'false'
+    ? false
+    : isProduction
+        ? { rejectUnauthorized: false }
+        : false;
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: false,
+    ssl: sslConfig,
 });
 
 export async function query<T>(text: string, params?: unknown[]): Promise<T[]> {
