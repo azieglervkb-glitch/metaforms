@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { sendLeadAssignmentEmail } from '@/lib/email';
 
 interface Lead {
     full_name: string;
     email: string;
     phone: string;
+    form_name: string | null;
 }
 
 interface TeamMember {
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
         const lead = await queryOne<Lead>(
             `UPDATE leads SET assigned_to = $1, updated_at = NOW() 
        WHERE id = $2 AND org_id = $3 
-       RETURNING full_name, email, phone`,
+       RETURNING full_name, email, phone, form_name`,
             [teamMemberId, leadId, payload.orgId]
         );
 
@@ -55,8 +57,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Team-Mitglied nicht gefunden' }, { status: 404 });
         }
 
-        // Send email notification (simplified - would use proper email service in production)
-        await sendAssignmentEmail(member, lead);
+        // Send email notification via Resend
+        await sendLeadAssignmentEmail(
+            {
+                firstName: member.first_name,
+                lastName: member.last_name,
+                email: member.email,
+            },
+            {
+                fullName: lead.full_name,
+                email: lead.email,
+                phone: lead.phone,
+                formName: lead.form_name,
+            }
+        );
 
         return NextResponse.json({
             success: true,
@@ -69,30 +83,4 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
-}
-
-async function sendAssignmentEmail(member: TeamMember, lead: Lead) {
-    // In production, use a proper email service like SendGrid, Resend, etc.
-    // For now, log the email that would be sent
-    console.log('========================================');
-    console.log('📧 EMAIL NOTIFICATION');
-    console.log(`To: ${member.email}`);
-    console.log(`Subject: Neuer Lead zugewiesen: ${lead.full_name || lead.email}`);
-    console.log(`Body:`);
-    console.log(`Hallo ${member.first_name},`);
-    console.log(``);
-    console.log(`Dir wurde ein neuer Lead zugewiesen:`);
-    console.log(`- Name: ${lead.full_name || 'Nicht angegeben'}`);
-    console.log(`- E-Mail: ${lead.email || 'Nicht angegeben'}`);
-    console.log(`- Telefon: ${lead.phone || 'Nicht angegeben'}`);
-    console.log(`========================================`);
-
-    // TODO: Integrate with email service
-    // Example with Resend:
-    // await resend.emails.send({
-    //   from: 'LeadSignal <noreply@leadsignal.de>',
-    //   to: member.email,
-    //   subject: `Neuer Lead zugewiesen: ${lead.full_name || lead.email}`,
-    //   html: `<p>Hallo ${member.first_name},</p>...`
-    // });
 }

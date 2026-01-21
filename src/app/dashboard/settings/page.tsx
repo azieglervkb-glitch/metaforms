@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardNav from '@/components/DashboardNav';
+import Link from 'next/link';
 
 interface MetaConnection {
     connected: boolean;
@@ -34,7 +35,6 @@ export default function SettingsPage() {
     };
 
     const handleConnectMeta = () => {
-        // Meta OAuth URL
         const appId = process.env.NEXT_PUBLIC_META_APP_ID || '';
         if (!appId) {
             alert('Meta App ID ist nicht konfiguriert. Bitte in Coolify Umgebungsvariablen setzen.');
@@ -60,7 +60,6 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Navigation */}
             <DashboardNav />
 
             <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
@@ -102,7 +101,7 @@ export default function SettingsPage() {
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <span className="text-gray-500">Pixel ID:</span>
-                                    <span className="ml-2 font-mono text-gray-900">{connection.pixel_id || 'Wird geladen...'}</span>
+                                    <span className="ml-2 font-mono text-gray-900">{connection.pixel_id || 'Automatisch'}</span>
                                 </div>
                                 <div>
                                     <span className="text-gray-500">Verbunden seit:</span>
@@ -111,25 +110,18 @@ export default function SettingsPage() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={handleDisconnect}
-                                    className="px-4 py-2 rounded-lg border text-sm text-red-600 hover:bg-red-50"
-                                >
-                                    Verbindung trennen
-                                </button>
-                            </div>
+                            <button
+                                onClick={handleDisconnect}
+                                className="px-4 py-2 rounded-lg border text-sm text-red-600 hover:bg-red-50"
+                            >
+                                Verbindung trennen
+                            </button>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600">
-                                Verbinde dein Meta Business Account um Lead Forms zu empfangen und Qualitätssignale automatisch zu senden.
+                                Verbinde dein Meta Business Account um Lead Forms zu empfangen.
                             </p>
-                            <ul className="text-sm text-gray-500 space-y-1">
-                                <li>✓ Access Token wird automatisch gespeichert</li>
-                                <li>✓ Pixel ID wird automatisch erkannt</li>
-                                <li>✓ Leads aus allen Kampagnen werden empfangen</li>
-                            </ul>
                             <button
                                 onClick={handleConnectMeta}
                                 className="px-6 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
@@ -142,6 +134,59 @@ export default function SettingsPage() {
                         </div>
                     )
                 )}
+            </div>
+
+            {/* Notifications Section */}
+            <div className="bg-white rounded-xl border p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Benachrichtigungen</h3>
+
+                {/* Email - Active */}
+                <div className="flex items-center justify-between py-4 border-b">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <span className="text-xl">📧</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-gray-900">E-Mail Benachrichtigungen</h4>
+                            <p className="text-sm text-gray-500">Bei Lead-Zuweisung an Team-Mitglieder</p>
+                        </div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                        ✓ Aktiv (Resend)
+                    </span>
+                </div>
+
+                {/* WhatsApp - Coming Soon */}
+                <div className="flex items-center justify-between py-4 border-b opacity-60">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <span className="text-xl">💬</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-gray-900">WhatsApp Benachrichtigungen</h4>
+                            <p className="text-sm text-gray-500">Sofortige Benachrichtigung bei neuem Lead</p>
+                        </div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                        Coming Soon
+                    </span>
+                </div>
+
+                {/* Slack - Coming Soon */}
+                <div className="flex items-center justify-between py-4 opacity-60">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <span className="text-xl">💼</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-gray-900">Slack Integration</h4>
+                            <p className="text-sm text-gray-500">Leads direkt in deinem Slack Channel</p>
+                        </div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                        Coming Soon
+                    </span>
+                </div>
             </div>
 
             {/* Webhook Info */}
@@ -172,16 +217,20 @@ export default function SettingsPage() {
                 </p>
             </div>
 
-            {/* How it works */}
-            <div className="bg-blue-50 rounded-xl border border-blue-100 p-6">
-                <h3 className="font-semibold text-blue-900 mb-3">So funktioniert's</h3>
-                <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                    <li>Verbinde dein Meta Business Account oben</li>
-                    <li>Konfiguriere den Webhook in deiner Meta App</li>
-                    <li>Leads werden automatisch empfangen</li>
-                    <li>Markiere Leads als "qualifiziert" oder "unqualifiziert"</li>
-                    <li>Qualitätssignale werden automatisch an Meta gesendet</li>
-                </ol>
+            {/* Help Link */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 p-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Hilfe benötigt?</h3>
+                        <p className="text-sm text-gray-600">Erfahre wie LeadSignal funktioniert und was Qualitäts-Feedback bringt.</p>
+                    </div>
+                    <Link
+                        href="/faq"
+                        className="px-4 py-2 rounded-lg bg-white border text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        FAQ lesen →
+                    </Link>
+                </div>
             </div>
         </div>
     );

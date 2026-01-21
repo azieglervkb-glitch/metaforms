@@ -12,6 +12,9 @@ export default function HomePage() {
             <span className="text-gray-500 text-sm">Lead Management</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/faq" className="text-gray-600 hover:text-gray-900 font-medium text-sm">
+              FAQ
+            </Link>
             <Link href="/login" className="text-gray-600 hover:text-gray-900 font-medium text-sm">
               Login
             </Link>

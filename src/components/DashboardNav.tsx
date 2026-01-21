@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { href: '/dashboard/leads', label: 'Leads' },
     { href: '/dashboard/kanban', label: 'Kanban' },
     { href: '/dashboard/team', label: 'Team' },
+    { href: '/dashboard/analytics', label: 'Analytics' },
     { href: '/dashboard/settings', label: 'Einstellungen' },
 ];
 
@@ -23,8 +24,8 @@ export default function DashboardNav() {
                         key={item.href}
                         href={item.href}
                         className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${isActive
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border text-gray-600 hover:bg-gray-50'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white border text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         {item.label}
