@@ -61,7 +61,7 @@ export default async function DashboardPage() {
                 <StatCard title="Signale gesendet" value={signalsSent} />
             </div>
 
-            {/* Quick Actions */}}
+            {/* Quick Actions */}
             <div className="grid gap-4 md:grid-cols-2 mb-8">
                 <Card className="border-l-4 border-l-blue-500">
                     <CardContent className="p-6">
