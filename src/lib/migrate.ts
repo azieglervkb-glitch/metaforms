@@ -1,14 +1,14 @@
 import { pool } from './db';
 
 export async function runMigrations() {
-    console.log('Running database migrations...');
+  console.log('Running database migrations...');
 
-    try {
-        // Enable UUID extension
-        await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+  try {
+    // Enable UUID extension
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 
-        // Organizations table
-        await pool.query(`
+    // Organizations table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS organizations (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         name VARCHAR(255) NOT NULL,
@@ -20,8 +20,8 @@ export async function runMigrations() {
       )
     `);
 
-        // Users table
-        await pool.query(`
+    // Users table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
@@ -34,8 +34,8 @@ export async function runMigrations() {
       )
     `);
 
-        // Meta connections table
-        await pool.query(`
+    // Meta connections table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS meta_connections (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
@@ -50,8 +50,13 @@ export async function runMigrations() {
       )
     `);
 
-        // Leads table
-        await pool.query(`
+    // Add pixel_id if not exists (for existing tables)
+    await pool.query(`
+      ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS pixel_id VARCHAR(255)
+    `);
+
+    // Leads table
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS leads (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
@@ -71,14 +76,14 @@ export async function runMigrations() {
       )
     `);
 
-        // Indexes
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+    // Indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
 
-        console.log('Database migrations completed successfully!');
-    } catch (error) {
-        console.error('Migration error:', error);
-        throw error;
-    }
+    console.log('Database migrations completed successfully!');
+  } catch (error) {
+    console.error('Migration error:', error);
+    throw error;
+  }
 }

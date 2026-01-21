@@ -1,224 +1,209 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import type { Lead, LeadStatus } from '@/types';
-import { LeadCard } from '@/components/LeadCard';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
-function LeadsContent() {
-    const searchParams = useSearchParams();
-    const initialStatus = searchParams.get('status') as LeadStatus | null;
+interface Lead {
+    id: string;
+    email: string;
+    phone: string;
+    full_name: string;
+    status: string;
+    quality_status: string;
+    quality_feedback_sent: boolean;
+    created_at: string;
+}
 
+export default function LeadsPage() {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<LeadStatus | 'all'>(initialStatus || 'all');
-    const [pagination, setPagination] = useState({
-        page: 1,
-        limit: 50,
-        total: 0,
-        totalPages: 0,
-    });
-
-    const fetchLeads = async (status?: LeadStatus | 'all') => {
-        setLoading(true);
-        try {
-            const params = new URLSearchParams({
-                page: pagination.page.toString(),
-                limit: pagination.limit.toString(),
-            });
-            if (status && status !== 'all') {
-                params.set('status', status);
-            }
-
-            const response = await fetch(`/api/leads?${params.toString()}`);
-            const data = await response.json();
-
-            if (data.leads) {
-                setLeads(data.leads);
-                setPagination(data.pagination);
-            }
-        } catch (error) {
-            console.error('Failed to fetch leads:', error);
-            toast.error('Fehler beim Laden der Leads');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [filter, setFilter] = useState<string>('all');
 
     useEffect(() => {
-        fetchLeads(activeTab);
-    }, [activeTab, pagination.page]);
+        fetchLeads();
+    }, [filter]);
 
-    const handleStatusChange = async (leadId: string, status: LeadStatus) => {
+    const fetchLeads = async () => {
+        setLoading(true);
         try {
-            const response = await fetch(`/api/leads/${leadId}`, {
+            const url = filter === 'all' ? '/api/leads' : `/api/leads?status=${filter}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            setLeads(data.leads || []);
+        } catch (error) {
+            console.error('Error fetching leads:', error);
+        }
+        setLoading(false);
+    };
+
+    const updateLeadQuality = async (leadId: string, qualityStatus: string) => {
+        try {
+            await fetch(`/api/leads/${leadId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ status: qualityStatus }),
             });
-
-            if (response.ok) {
-                setLeads(leads.map(lead =>
-                    lead.id === leadId ? { ...lead, status } : lead
-                ));
-                toast.success('Status aktualisiert');
-            } else {
-                toast.error('Fehler beim Aktualisieren');
-            }
+            fetchLeads();
         } catch (error) {
-            console.error('Status update failed:', error);
-            toast.error('Fehler beim Aktualisieren');
+            console.error('Error updating lead:', error);
         }
     };
 
-    const handleSendSignal = async (leadId: string) => {
+    const sendQualitySignal = async (leadId: string) => {
         try {
-            const response = await fetch('/api/capi/send-event', {
+            const res = await fetch('/api/capi/send-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ leadId }),
             });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setLeads(leads.map(lead =>
-                    lead.id === leadId
-                        ? { ...lead, quality_sent_to_meta: true, quality_sent_at: new Date().toISOString() }
-                        : lead
-                ));
-                toast.success('Signal erfolgreich an Meta gesendet! 🚀');
+            const data = await res.json();
+            if (data.success) {
+                alert('Signal erfolgreich an Meta gesendet!');
+                fetchLeads();
             } else {
-                toast.error(data.error || 'Fehler beim Senden');
+                alert(data.error || 'Fehler beim Senden');
             }
         } catch (error) {
-            console.error('Send signal failed:', error);
-            toast.error('Fehler beim Senden des Signals');
+            console.error('Error sending signal:', error);
+            alert('Fehler beim Senden des Signals');
         }
     };
 
-    const tabs: { value: LeadStatus | 'all'; label: string; emoji: string }[] = [
-        { value: 'all', label: 'Alle', emoji: '📊' },
-        { value: 'new', label: 'Neu', emoji: '🆕' },
-        { value: 'contacted', label: 'Kontaktiert', emoji: '📞' },
-        { value: 'qualified', label: 'Qualifiziert', emoji: '👍' },
-        { value: 'junk', label: 'Junk', emoji: '👎' },
-        { value: 'not_reached', label: 'Nicht erreicht', emoji: '📵' },
-        { value: 'closed', label: 'Abgeschlossen', emoji: '✅' },
-    ];
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
 
     return (
         <div className="space-y-6">
+            {/* Tabs */}
+            <div className="flex gap-2">
+                <Link
+                    href="/dashboard"
+                    className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50"
+                >
+                    Übersicht
+                </Link>
+                <Link
+                    href="/dashboard/leads"
+                    className="px-6 py-2 rounded-full bg-blue-500 text-white text-sm font-medium"
+                >
+                    Leads
+                </Link>
+                <Link
+                    href="/dashboard/settings"
+                    className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50"
+                >
+                    Einstellungen
+                </Link>
+            </div>
+
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Leads</h1>
-                    <p className="text-muted-foreground mt-1">
-                        {pagination.total} Lead{pagination.total !== 1 ? 's' : ''} insgesamt
-                    </p>
-                </div>
-                <Button onClick={() => fetchLeads(activeTab)} variant="outline">
-                    🔄 Aktualisieren
-                </Button>
-            </div>
-
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as LeadStatus | 'all')}>
-                <TabsList className="flex-wrap h-auto gap-1 bg-muted p-1">
-                    {tabs.map(tab => (
-                        <TabsTrigger
-                            key={tab.value}
-                            value={tab.value}
-                            className="data-[state=active]:bg-background"
+                <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+                <div className="flex gap-2">
+                    {['all', 'new', 'qualified', 'unqualified'].map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setFilter(status)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === status
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white border text-gray-600 hover:bg-gray-50'
+                                }`}
                         >
-                            {tab.emoji} {tab.label}
-                        </TabsTrigger>
+                            {status === 'all' ? 'Alle' : status === 'new' ? 'Neu' : status === 'qualified' ? 'Qualifiziert' : 'Unqualifiziert'}
+                        </button>
                     ))}
-                </TabsList>
-            </Tabs>
-
-            {/* Loading State */}
-            {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-            ) : leads.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-4xl mb-4">📭</p>
-                    <h3 className="text-lg font-semibold">Keine Leads gefunden</h3>
-                    <p className="text-muted-foreground">
-                        {activeTab === 'all'
-                            ? 'Verbinde dein Meta-Konto, um Leads zu empfangen.'
-                            : `Keine Leads mit Status "${tabs.find(t => t.value === activeTab)?.label}".`
-                        }
-                    </p>
-                </div>
-            ) : (
-                <>
-                    {/* Lead Grid */}
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {leads.map(lead => (
-                            <LeadCard
-                                key={lead.id}
-                                lead={lead}
-                                onStatusChange={handleStatusChange}
-                                onSendSignal={handleSendSignal}
-                            />
-                        ))}
-                    </div>
+            </div>
 
-                    {/* Pagination */}
-                    {pagination.totalPages > 1 && (
-                        <div className="flex items-center justify-center gap-2 mt-8">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
-                                disabled={pagination.page === 1}
-                            >
-                                ← Zurück
-                            </Button>
-                            <span className="text-sm text-muted-foreground px-4">
-                                Seite {pagination.page} von {pagination.totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
-                                disabled={pagination.page === pagination.totalPages}
-                            >
-                                Weiter →
-                            </Button>
+            {/* Leads Table */}
+            <div className="bg-white rounded-xl border overflow-hidden">
+                {loading ? (
+                    <div className="p-8 text-center text-gray-500">Lädt...</div>
+                ) : leads.length === 0 ? (
+                    <div className="p-8 text-center">
+                        <div className="text-gray-400 mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            </svg>
                         </div>
-                    )}
-                </>
-            )}
-        </div>
-    );
-}
-
-// Loading fallback for Suspense
-function LeadsLoading() {
-    return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold">Leads</h1>
-                <p className="text-muted-foreground mt-1">Wird geladen...</p>
+                        <p className="text-gray-500">Noch keine Leads vorhanden</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Leads erscheinen hier sobald sie über Meta Lead Forms eingehen
+                        </p>
+                    </div>
+                ) : (
+                    <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">Name</th>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">E-Mail</th>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">Telefon</th>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">Datum</th>
+                                <th className="text-left p-4 text-sm font-medium text-gray-600">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {leads.map((lead) => (
+                                <tr key={lead.id} className="border-b hover:bg-gray-50">
+                                    <td className="p-4">
+                                        <span className="font-medium text-gray-900">{lead.full_name || '-'}</span>
+                                    </td>
+                                    <td className="p-4 text-gray-600">{lead.email || '-'}</td>
+                                    <td className="p-4 text-gray-600">{lead.phone || '-'}</td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
+                                                lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                            {lead.status === 'qualified' ? 'Qualifiziert' :
+                                                lead.status === 'unqualified' ? 'Unqualifiziert' : 'Neu'}
+                                        </span>
+                                        {lead.quality_feedback_sent && (
+                                            <span className="ml-2 text-xs text-green-600">✓ Signal gesendet</span>
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-gray-500 text-sm">{formatDate(lead.created_at)}</td>
+                                    <td className="p-4">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => updateLeadQuality(lead.id, 'qualified')}
+                                                className="px-3 py-1 rounded bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200"
+                                                title="Als qualifiziert markieren"
+                                            >
+                                                ✓
+                                            </button>
+                                            <button
+                                                onClick={() => updateLeadQuality(lead.id, 'unqualified')}
+                                                className="px-3 py-1 rounded bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200"
+                                                title="Als unqualifiziert markieren"
+                                            >
+                                                ✗
+                                            </button>
+                                            {lead.status === 'qualified' && !lead.quality_feedback_sent && (
+                                                <button
+                                                    onClick={() => sendQualitySignal(lead.id)}
+                                                    className="px-3 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200"
+                                                    title="Signal an Meta senden"
+                                                >
+                                                    📤 Signal
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
-            <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
         </div>
-    );
-}
-
-export default function LeadsPage() {
-    return (
-        <Suspense fallback={<LeadsLoading />}>
-            <LeadsContent />
-        </Suspense>
     );
 }
