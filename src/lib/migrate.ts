@@ -34,6 +34,19 @@ export async function runMigrations() {
       )
     `);
 
+    // Team members table (for lead assignment)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS team_members (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        first_name VARCHAR(255) NOT NULL,
+        last_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(org_id, email)
+      )
+    `);
+
     // Meta connections table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS meta_connections (
@@ -50,7 +63,7 @@ export async function runMigrations() {
       )
     `);
 
-    // Add pixel_id if not exists (for existing tables)
+    // Add pixel_id if not exists
     await pool.query(`
       ALTER TABLE meta_connections ADD COLUMN IF NOT EXISTS pixel_id VARCHAR(255)
     `);
@@ -70,16 +83,22 @@ export async function runMigrations() {
         quality_feedback_sent_at TIMESTAMP WITH TIME ZONE,
         status VARCHAR(50) DEFAULT 'new',
         notes TEXT,
+        assigned_to UUID REFERENCES team_members(id) ON DELETE SET NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         UNIQUE(org_id, meta_lead_id)
       )
     `);
 
+    // Add columns if not exists
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID`);
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id)`);
 
     console.log('Database migrations completed successfully!');
   } catch (error) {
