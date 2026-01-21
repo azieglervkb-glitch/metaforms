@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardNav from '@/components/DashboardNav';
+import InfoIcon from '@/components/InfoIcon';
 
 interface Lead {
     id: string;
@@ -26,11 +27,14 @@ interface TeamMember {
     email: string;
 }
 
+// Funnel stages with CAPI signal info
 const COLUMNS = [
-    { id: 'new', title: 'Neu', color: 'bg-yellow-500' },
-    { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500' },
-    { id: 'qualified', title: 'Qualifiziert', color: 'bg-green-500' },
-    { id: 'unqualified', title: 'Unqualifiziert', color: 'bg-red-500' },
+    { id: 'new', title: 'Neu', color: 'bg-yellow-500', emoji: '📥', sendsCAPI: false, info: 'Neue Leads von Meta Lead Forms. Noch nicht kontaktiert.' },
+    { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', emoji: '📞', sendsCAPI: false, info: 'Lead wurde angerufen oder per E-Mail kontaktiert.' },
+    { id: 'interested', title: 'Interessiert', color: 'bg-purple-500', emoji: '💬', sendsCAPI: true, info: 'Lead zeigt echtes Interesse. CAPI-Signal wird an Meta gesendet!' },
+    { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', emoji: '📅', sendsCAPI: true, info: 'Termin wurde vereinbart. CAPI-Signal wird an Meta gesendet!' },
+    { id: 'won', title: 'Gewonnen', color: 'bg-green-500', emoji: '🏆', sendsCAPI: true, info: 'Deal abgeschlossen! CAPI-Signal wird an Meta gesendet!' },
+    { id: 'lost', title: 'Verloren', color: 'bg-red-500', emoji: '❌', sendsCAPI: false, info: 'Lead nicht qualifiziert oder abgesprungen.' },
 ];
 
 export default function KanbanPage() {
@@ -120,30 +124,40 @@ export default function KanbanPage() {
             <DashboardNav />
 
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">Lead Pipeline</h1>
-                <p className="text-sm text-gray-500">Leads per Drag & Drop verschieben oder klicken für Details</p>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-gray-900">Lead Pipeline</h1>
+                    <InfoIcon
+                        text="Verschiebe Leads durch die Pipeline. Bei 'Interessiert', 'Termin' und 'Gewonnen' wird automatisch ein Signal an Meta gesendet, das den Algorithmus trainiert."
+                        position="right"
+                    />
+                </div>
+                <p className="text-sm text-gray-500">Drag & Drop oder klicken für Details</p>
             </div>
 
             {loading ? (
                 <div className="text-center py-12 text-gray-500">Lädt...</div>
             ) : (
-                <div className="grid grid-cols-4 gap-4 min-h-[600px]">
+                <div className="grid grid-cols-6 gap-3 min-h-[600px]">
                     {COLUMNS.map((column) => (
                         <div
                             key={column.id}
-                            className="bg-gray-50 rounded-xl p-4"
+                            className="bg-gray-50 rounded-xl p-3"
                             onDragOver={handleDragOver}
                             onDrop={() => handleDrop(column.id)}
                         >
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className={`w-3 h-3 rounded-full ${column.color}`} />
-                                <h2 className="font-semibold text-gray-700">{column.title}</h2>
-                                <span className="ml-auto bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
+                            <div className="flex items-center gap-1.5 mb-3">
+                                <span className="text-lg">{column.emoji}</span>
+                                <h2 className="font-semibold text-gray-700 text-sm">{column.title}</h2>
+                                <InfoIcon text={column.info} position="bottom" />
+                                {column.sendsCAPI && (
+                                    <span className="text-xs text-green-600" title="Sendet CAPI-Signal">📤</span>
+                                )}
+                                <span className="ml-auto bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
                                     {getLeadsByStatus(column.id).length}
                                 </span>
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {getLeadsByStatus(column.id).map((lead) => (
                                     <div
                                         key={lead.id}

@@ -140,6 +140,20 @@ export default function SettingsPage() {
             <div className="bg-white rounded-xl border p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Benachrichtigungen</h3>
 
+                {/* Browser Push */}
+                <div className="flex items-center justify-between py-4 border-b">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <span className="text-xl">🔔</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-gray-900">Browser Push</h4>
+                            <p className="text-sm text-gray-500">Sofort-Benachrichtigung bei neuem Lead</p>
+                        </div>
+                    </div>
+                    <PushNotificationToggle />
+                </div>
+
                 {/* Email - Active */}
                 <div className="flex items-center justify-between py-4 border-b">
                     <div className="flex items-center gap-3">
@@ -148,7 +162,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                             <h4 className="font-medium text-gray-900">E-Mail Benachrichtigungen</h4>
-                            <p className="text-sm text-gray-500">Bei Lead-Zuweisung an Team-Mitglieder</p>
+                            <p className="text-sm text-gray-500">Bei Lead-Zuweisung mit Rating-Buttons</p>
                         </div>
                     </div>
                     <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
@@ -233,5 +247,58 @@ export default function SettingsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Client component for push notifications
+function PushNotificationToggle() {
+    const [permission, setPermission] = useState<NotificationPermission>('default');
+    const [supported, setSupported] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            setSupported(true);
+            setPermission(Notification.permission);
+        }
+    }, []);
+
+    const requestPermission = async () => {
+        if (!supported) return;
+        const result = await Notification.requestPermission();
+        setPermission(result);
+        if (result === 'granted') {
+            new Notification('LeadSignal 🔔', {
+                body: 'Push-Benachrichtigungen aktiviert!',
+            });
+        }
+    };
+
+    if (!supported) {
+        return <span className="text-xs text-gray-400">Nicht unterstützt</span>;
+    }
+
+    if (permission === 'granted') {
+        return (
+            <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+                ✓ Aktiv
+            </span>
+        );
+    }
+
+    if (permission === 'denied') {
+        return (
+            <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                Blockiert
+            </span>
+        );
+    }
+
+    return (
+        <button
+            onClick={requestPermission}
+            className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200"
+        >
+            Aktivieren
+        </button>
     );
 }

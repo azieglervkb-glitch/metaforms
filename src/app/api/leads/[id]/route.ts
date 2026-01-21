@@ -1,17 +1,28 @@
-// Update lead status
+// Update lead status with auto CAPI signal for positive stages
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { sendCAPIEvent, createQualifiedLeadEvent } from '@/lib/meta-api';
 
 interface Lead {
     id: string;
     org_id: string;
-    email: string;
-    phone: string;
+    email: string | null;
+    phone: string | null;
     full_name: string;
     status: string;
     notes: string;
+    meta_lead_id: string;
+    quality_feedback_sent: boolean;
 }
+
+interface MetaConnection {
+    access_token: string;
+    pixel_id: string;
+}
+
+// Stages that trigger CAPI signal
+const CAPI_STAGES = ['interested', 'meeting', 'won'];
 
 export async function PATCH(
     request: NextRequest,
@@ -63,13 +74,58 @@ export async function PATCH(
             return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, lead });
+        // Auto-send CAPI signal for positive stages
+        let capiSent = false;
+        if (status && CAPI_STAGES.includes(status) && !lead.quality_feedback_sent) {
+            capiSent = await sendQualitySignalForLead(lead, payload.orgId);
+        }
+
+        return NextResponse.json({
+            success: true,
+            lead,
+            capiSent,
+            message: capiSent ? 'Status aktualisiert & Signal an Meta gesendet!' : undefined
+        });
     } catch (error) {
         console.error('Lead update error:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
         );
+    }
+}
+
+async function sendQualitySignalForLead(lead: Lead, orgId: string): Promise<boolean> {
+    try {
+        const connection = await queryOne<MetaConnection>(
+            'SELECT access_token, pixel_id FROM meta_connections WHERE org_id = $1',
+            [orgId]
+        );
+
+        if (!connection?.pixel_id || !connection?.access_token) {
+            console.log('No Meta connection for CAPI signal');
+            return false;
+        }
+
+        const event = createQualifiedLeadEvent(
+            lead.email,
+            lead.phone,
+            lead.meta_lead_id
+        );
+
+        await sendCAPIEvent(connection.pixel_id, connection.access_token, [event]);
+
+        // Mark as sent
+        await query(
+            `UPDATE leads SET quality_feedback_sent = true, quality_feedback_sent_at = NOW() WHERE id = $1`,
+            [lead.id]
+        );
+
+        console.log('CAPI signal auto-sent for stage:', lead.status);
+        return true;
+    } catch (error) {
+        console.error('Failed to send CAPI signal:', error);
+        return false;
     }
 }
 
