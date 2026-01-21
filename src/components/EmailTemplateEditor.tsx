@@ -24,6 +24,7 @@ const PREVIEW_DATA: Record<string, string> = {
     '{{qualified_url}}': '#',
     '{{unqualified_url}}': '#',
     '{{dashboard_url}}': '#',
+    '{{portal_url}}': '#',
 };
 
 export default function EmailTemplateEditor() {

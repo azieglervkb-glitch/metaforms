@@ -78,6 +78,18 @@ const DEFAULT_TEMPLATE = {
       </table>
     </div>
 
+    <!-- Portal Link -->
+    <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 2px solid #c4b5fd; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <h2 style="color: #6b21a8; margin: 0 0 12px; font-size: 18px;">Dein persönliches Portal</h2>
+      <p style="color: #7c3aed; margin: 0 0 16px; font-size: 14px;">
+        Im Portal siehst du alle deine Leads und kannst sie direkt verwalten - ohne Login.
+      </p>
+      <a href="{{portal_url}}"
+         style="display: inline-block; text-align: center; padding: 14px 28px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        Mein Lead-Portal öffnen
+      </a>
+    </div>
+
     <!-- Dashboard Link -->
     <a href="{{dashboard_url}}"
        style="display: inline-block; background: #f3f4f6; color: #374151; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">
@@ -105,6 +117,7 @@ export const TEMPLATE_VARIABLES = [
     { key: '{{qualified_url}}', description: 'Link für "Guter Lead"' },
     { key: '{{unqualified_url}}', description: 'Link für "Schlechter Lead"' },
     { key: '{{dashboard_url}}', description: 'Link zum Dashboard' },
+    { key: '{{portal_url}}', description: 'Link zum persönlichen Portal' },
 ];
 
 // GET - Get email template for organization
