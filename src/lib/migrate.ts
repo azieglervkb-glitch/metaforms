@@ -1,0 +1,84 @@
+import { pool } from './db';
+
+export async function runMigrations() {
+    console.log('Running database migrations...');
+
+    try {
+        // Enable UUID extension
+        await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
+        // Organizations table
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS organizations (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(255) NOT NULL,
+        stripe_customer_id VARCHAR(255),
+        subscription_status VARCHAR(50) DEFAULT 'trial',
+        subscription_plan VARCHAR(50) DEFAULT 'free',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
+        // Users table
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        full_name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'member',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
+        // Meta connections table
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS meta_connections (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        access_token TEXT NOT NULL,
+        user_id VARCHAR(255),
+        page_id VARCHAR(255),
+        page_name VARCHAR(255),
+        pixel_id VARCHAR(255),
+        connected_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        expires_at TIMESTAMP WITH TIME ZONE,
+        UNIQUE(org_id)
+      )
+    `);
+
+        // Leads table
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        meta_lead_id VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        phone VARCHAR(50),
+        full_name VARCHAR(255),
+        raw_data JSONB,
+        quality_status VARCHAR(50) DEFAULT 'pending',
+        quality_feedback_sent BOOLEAN DEFAULT false,
+        quality_feedback_sent_at TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(50) DEFAULT 'new',
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(org_id, meta_lead_id)
+      )
+    `);
+
+        // Indexes
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+
+        console.log('Database migrations completed successfully!');
+    } catch (error) {
+        console.error('Migration error:', error);
+        throw error;
+    }
+}
