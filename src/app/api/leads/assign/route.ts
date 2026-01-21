@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Team-Mitglied nicht gefunden' }, { status: 404 });
         }
 
-        // Send email notification via Resend
+        // Send email notification via Resend with rating buttons
         await sendLeadAssignmentEmail(
             {
                 firstName: member.first_name,
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
                 email: member.email,
             },
             {
+                id: leadId, // For token generation
                 fullName: lead.full_name,
                 email: lead.email,
                 phone: lead.phone,

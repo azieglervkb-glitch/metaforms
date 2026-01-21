@@ -99,12 +99,27 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_id VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_id VARCHAR(255)`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS rated_via VARCHAR(50)`); // 'dashboard' or 'email'
+
+    // Email rating tokens table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lead_email_tokens (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+        token VARCHAR(64) NOT NULL UNIQUE,
+        used BOOLEAN DEFAULT false,
+        used_at TIMESTAMP WITH TIME ZONE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
 
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON lead_email_tokens(token)`);
 
     console.log('Database migrations completed successfully!');
   } catch (error) {
