@@ -12,6 +12,7 @@ export interface User {
     role: string;
     org_id: string;
     is_super_admin?: boolean;
+    org_subscription_status?: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -54,7 +55,10 @@ export async function getCurrentUser(): Promise<User | null> {
     if (!payload) return null;
 
     const user = await queryOne<User>(
-        'SELECT id, email, full_name, role, org_id, is_super_admin FROM users WHERE id = $1',
+        `SELECT u.id, u.email, u.full_name, u.role, u.org_id, u.is_super_admin, o.subscription_status as org_subscription_status
+         FROM users u
+         LEFT JOIN organizations o ON u.org_id = o.id
+         WHERE u.id = $1`,
         [payload.userId]
     );
 

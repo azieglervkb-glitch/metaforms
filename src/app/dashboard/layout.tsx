@@ -18,6 +18,35 @@ export default async function DashboardLayout({
 }) {
     const user = await getCurrentUser();
 
+    // Access Control Check
+    if (user && !user.is_super_admin) {
+        const status = user.org_subscription_status;
+        if (status === 'pending_approval' || status === 'inactive') {
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center border border-gray-100">
+                        <div className="text-4xl mb-4">
+                            {status === 'inactive' ? '🚫' : '⏳'}
+                        </div>
+                        <h1 className="text-xl font-bold text-gray-900 mb-2">
+                            {status === 'inactive' ? 'Account deaktiviert' : 'Wartet auf Freigabe'}
+                        </h1>
+                        <p className="text-gray-600 mb-6">
+                            {status === 'inactive'
+                                ? 'Ihr Account wurde deaktiviert. Bitte kontaktieren Sie den Support.'
+                                : 'Vielen Dank für Ihre Registrierung. Ihr Account wird derzeit überprüft und in Kürze freigeschaltet.'}
+                        </p>
+                        <form action="/api/auth/signout" method="post">
+                            <button className="text-sm text-gray-500 hover:text-gray-900 underline">
+                                Abmelden
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+    }
+
     return (
         <div className="min-h-screen">
             {/* Top Header Bar - outrnk style */}
