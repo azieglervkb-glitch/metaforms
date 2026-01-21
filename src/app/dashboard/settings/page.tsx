@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import DashboardNav from '@/components/DashboardNav';
 
 interface MetaConnection {
     connected: boolean;
@@ -60,18 +60,8 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Tabs */}
-            <div className="flex gap-2">
-                <Link href="/dashboard" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Übersicht
-                </Link>
-                <Link href="/dashboard/leads" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Leads
-                </Link>
-                <Link href="/dashboard/settings" className="px-6 py-2 rounded-full bg-blue-500 text-white text-sm font-medium">
-                    Einstellungen
-                </Link>
-            </div>
+            {/* Navigation */}
+            <DashboardNav />
 
             <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import DashboardNav from '@/components/DashboardNav';
 
 interface Lead {
     id: string;
@@ -114,24 +115,8 @@ export default function KanbanPage() {
 
     return (
         <div className="space-y-6">
-            {/* Tabs */}
-            <div className="flex gap-2 flex-wrap">
-                <Link href="/dashboard" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Übersicht
-                </Link>
-                <Link href="/dashboard/leads" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Liste
-                </Link>
-                <Link href="/dashboard/kanban" className="px-6 py-2 rounded-full bg-blue-500 text-white text-sm font-medium">
-                    Kanban
-                </Link>
-                <Link href="/dashboard/team" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Team
-                </Link>
-                <Link href="/dashboard/settings" className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50">
-                    Einstellungen
-                </Link>
-            </div>
+            {/* Navigation */}
+            <DashboardNav />
 
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Lead Pipeline</h1>
@@ -339,11 +324,11 @@ function LeadDetailModal({
                                     key={s}
                                     onClick={() => setStatus(s)}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${status === s
-                                            ? s === 'qualified' ? 'bg-green-500 text-white' :
-                                                s === 'unqualified' ? 'bg-red-500 text-white' :
-                                                    s === 'contacted' ? 'bg-blue-500 text-white' :
-                                                        'bg-yellow-500 text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? s === 'qualified' ? 'bg-green-500 text-white' :
+                                            s === 'unqualified' ? 'bg-red-500 text-white' :
+                                                s === 'contacted' ? 'bg-blue-500 text-white' :
+                                                    'bg-yellow-500 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
                                     {s === 'new' ? 'Neu' :

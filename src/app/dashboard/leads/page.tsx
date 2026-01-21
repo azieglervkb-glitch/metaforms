@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import DashboardNav from '@/components/DashboardNav';
 
 interface Lead {
     id: string;
@@ -81,27 +81,8 @@ export default function LeadsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Tabs */}
-            <div className="flex gap-2">
-                <Link
-                    href="/dashboard"
-                    className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50"
-                >
-                    Übersicht
-                </Link>
-                <Link
-                    href="/dashboard/leads"
-                    className="px-6 py-2 rounded-full bg-blue-500 text-white text-sm font-medium"
-                >
-                    Leads
-                </Link>
-                <Link
-                    href="/dashboard/settings"
-                    className="px-6 py-2 rounded-full bg-white border text-gray-600 text-sm font-medium hover:bg-gray-50"
-                >
-                    Einstellungen
-                </Link>
-            </div>
+            {/* Navigation */}
+            <DashboardNav />
 
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -112,8 +93,8 @@ export default function LeadsPage() {
                             key={status}
                             onClick={() => setFilter(status)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === status
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-white border text-gray-600 hover:bg-gray-50'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white border text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             {status === 'all' ? 'Alle' : status === 'new' ? 'Neu' : status === 'qualified' ? 'Qualifiziert' : 'Unqualifiziert'}
@@ -160,8 +141,8 @@ export default function LeadsPage() {
                                     <td className="p-4 text-gray-600">{lead.phone || '-'}</td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
-                                                lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
-                                                    'bg-yellow-100 text-yellow-700'
+                                            lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-700'
                                             }`}>
                                             {lead.status === 'qualified' ? 'Qualifiziert' :
                                                 lead.status === 'unqualified' ? 'Unqualifiziert' : 'Neu'}
