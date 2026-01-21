@@ -210,3 +210,8 @@ body {
   z-index: 2000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* Table Styles */
+.table-row:hover {
+  background: var(--gray-50);
+}

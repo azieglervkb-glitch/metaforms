@@ -255,7 +255,7 @@ export default function LeadsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {leads.map((lead) => (
-                                        <tr key={lead.id} className="border-b hover:bg-gray-50">
+                                        <tr key={lead.id} className="table-row">
                                             <td className="p-4">
                                                 <span className="font-medium text-gray-900">{lead.full_name || '-'}</span>
                                             </td>
