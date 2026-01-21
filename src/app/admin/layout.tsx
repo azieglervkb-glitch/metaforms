@@ -56,7 +56,7 @@ export default async function AdminLayout({
                         >
                             Zur App
                         </Link>
-                        <form action="/api/auth/signout" method="post">
+                        <form action="/api/auth/logout" method="post">
                             <button
                                 type="submit"
                                 className="btn-secondary text-sm py-2 px-4"

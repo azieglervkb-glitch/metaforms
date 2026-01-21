@@ -42,7 +42,7 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
     const [notes, setNotes] = useState(lead.notes || '');
     const [isSaving, setIsSaving] = useState(false);
 
-    const fullName = [lead.first_name, lead.last_name].filter(Boolean).join(' ') || 'Unbekannt';
+    const fullName = lead.full_name || 'Unbekannt';
     const createdAt = new Date(lead.created_at).toLocaleDateString('de-DE', {
         day: '2-digit',
         month: '2-digit',
@@ -98,7 +98,7 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
                     )}
                 </div>
 
-                {lead.quality_sent_to_meta && (
+                {lead.quality_feedback_sent && (
                     <div className="mt-3 flex items-center gap-1 text-xs text-green-600">
                         <span>📡</span> Signal an Meta gesendet
                     </div>
@@ -126,11 +126,11 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
                         </div>
 
                         {/* Custom Fields */}
-                        {Object.keys(lead.custom_fields || {}).length > 0 && (
+                        {Object.keys(lead.raw_data || {}).length > 0 && (
                             <div>
                                 <h4 className="text-sm font-medium mb-2">Weitere Felder</h4>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {Object.entries(lead.custom_fields).map(([key, value]) => (
+                                    {Object.entries(lead.raw_data).map(([key, value]) => (
                                         <div key={key} className="p-2 rounded bg-muted text-sm">
                                             <span className="text-muted-foreground">{key}:</span> {value}
                                         </div>
@@ -201,7 +201,7 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
                         </div>
 
                         {/* Send Signal to Meta */}
-                        {lead.status === 'qualified' && !lead.quality_sent_to_meta && (
+                        {lead.status === 'qualified' && !lead.quality_feedback_sent && (
                             <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30">
                                 <h4 className="font-medium mb-2">🚀 Algorithmus trainieren</h4>
                                 <p className="text-sm text-muted-foreground mb-3">
@@ -217,14 +217,14 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
                             </div>
                         )}
 
-                        {lead.quality_sent_to_meta && (
+                        {lead.quality_feedback_sent && (
                             <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
                                 <div className="flex items-center gap-2 text-green-600">
                                     <span>✅</span>
                                     <span className="font-medium">Signal wurde an Meta gesendet</span>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Gesendet am {new Date(lead.quality_sent_at!).toLocaleDateString('de-DE')}
+                                    Gesendet am {new Date(lead.quality_feedback_sent_at!).toLocaleDateString('de-DE')}
                                 </p>
                             </div>
                         )}
