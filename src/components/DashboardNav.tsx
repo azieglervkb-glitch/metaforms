@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { deleteCookie } from 'cookies-next';
+import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
     { href: '/dashboard', label: 'Übersicht' },
@@ -15,7 +14,6 @@ const NAV_ITEMS = [
 
 export default function DashboardNav() {
     const pathname = usePathname();
-    const router = useRouter();
 
     const handleLogout = async () => {
         try {
@@ -23,8 +21,8 @@ export default function DashboardNav() {
         } catch (e) {
             console.error('Logout error:', e);
         }
-        deleteCookie('auth_token');
-        router.push('/login');
+        // Hard redirect to clear all client state
+        window.location.href = '/login';
     };
 
     return (
