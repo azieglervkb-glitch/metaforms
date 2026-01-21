@@ -258,10 +258,10 @@ function LeadDetailModal({
         if (!assignedTo) return;
         setAssigning(true);
         try {
-            const res = await fetch(`/api/leads/${lead.id}/assign`, {
+            const res = await fetch('/api/leads/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamMemberId: assignedTo }),
+                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
             });
 
             // Handle non-JSON responses
@@ -287,6 +287,7 @@ function LeadDetailModal({
                     'Team member not found': 'Team-Mitglied nicht gefunden.',
                     'Team member not in same organization': 'Team-Mitglied gehort nicht zur Organisation.',
                     'Failed to assign lead': 'Zuweisung fehlgeschlagen. Bitte erneut versuchen.',
+                    'leadId and teamMemberId are required': 'Lead und Team-Mitglied sind erforderlich.',
                 };
                 const apiError = data.error || data.message || '';
                 const errorMsg = apiError ? (errorMessages[apiError] || apiError) : `Fehler (Status: ${res.status})`;
