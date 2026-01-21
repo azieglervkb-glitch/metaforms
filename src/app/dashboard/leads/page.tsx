@@ -166,6 +166,11 @@ export default function LeadsPage() {
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto p-6">
+                {/* Section Header */}
+                <div className="mb-6">
+                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Lead Management</h2>
+                </div>
+
                 {/* Header with Actions */}
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <h1 className="text-xl font-semibold text-gray-900">Leads</h1>
@@ -236,19 +241,19 @@ export default function LeadsPage() {
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b">
-                                    <tr>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Name</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">E-Mail</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Telefon</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Formular</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Zugewiesen</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Datum</th>
-                                        <th className="text-left p-4 text-sm font-medium text-gray-600">Aktionen</th>
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Name</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">E-Mail</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Telefon</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Formular</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Zugewiesen</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Datum</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Aktionen</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-100">
                                     {leads.map((lead) => (
                                         <tr key={lead.id} className="border-b hover:bg-gray-50">
                                             <td className="p-4">
