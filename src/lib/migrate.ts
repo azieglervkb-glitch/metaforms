@@ -95,7 +95,8 @@ export async function runMigrations() {
 
     // Add columns if not exists
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
-    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id) ON DELETE SET NULL`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMP WITH TIME ZONE`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_id VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_id VARCHAR(255)`);
@@ -117,6 +118,7 @@ export async function runMigrations() {
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON lead_email_tokens(token)`);
