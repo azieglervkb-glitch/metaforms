@@ -104,3 +104,11 @@ CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_lead_forms_org_id ON lead_forms(org_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_org_id ON users(org_id);
+CREATE INDEX IF NOT EXISTS idx_users_org_id ON users(org_id);
+
+-- System settings for global configuration
+CREATE TABLE IF NOT EXISTS system_settings (
+  key VARCHAR(50) PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
