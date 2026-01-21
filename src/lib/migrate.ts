@@ -78,6 +78,9 @@ export async function runMigrations() {
         phone VARCHAR(50),
         full_name VARCHAR(255),
         raw_data JSONB,
+        form_id VARCHAR(255),
+        form_name VARCHAR(255),
+        ad_id VARCHAR(255),
         quality_status VARCHAR(50) DEFAULT 'pending',
         quality_feedback_sent BOOLEAN DEFAULT false,
         quality_feedback_sent_at TIMESTAMP WITH TIME ZONE,
@@ -93,6 +96,9 @@ export async function runMigrations() {
     // Add columns if not exists
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to UUID`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_id VARCHAR(255)`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_id VARCHAR(255)`);
 
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);

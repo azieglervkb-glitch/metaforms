@@ -10,7 +10,18 @@ interface Lead {
     full_name: string;
     status: string;
     quality_status: string;
+    quality_feedback_sent: boolean;
+    form_id: string | null;
+    form_name: string | null;
+    ad_id: string | null;
+    assigned_to: string | null;
+    notes: string | null;
     created_at: string;
+}
+
+interface FormOption {
+    form_id: string;
+    form_name: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -28,6 +39,7 @@ export async function GET(request: NextRequest) {
         // Parse query params
         const searchParams = request.nextUrl.searchParams;
         const status = searchParams.get('status');
+        const formId = searchParams.get('form_id');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '50');
         const offset = (page - 1) * limit;
@@ -35,26 +47,52 @@ export async function GET(request: NextRequest) {
         // Build query
         let sql = `SELECT * FROM leads WHERE org_id = $1`;
         const params: (string | number)[] = [payload.orgId];
+        let paramIndex = 2;
 
         if (status) {
-            sql += ` AND status = $2`;
+            sql += ` AND status = $${paramIndex}`;
             params.push(status);
+            paramIndex++;
         }
 
-        sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        if (formId) {
+            sql += ` AND form_id = $${paramIndex}`;
+            params.push(formId);
+            paramIndex++;
+        }
+
+        sql += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(limit, offset);
 
         const leads = await query<Lead>(sql, params);
 
         // Get total count
-        const countResult = await query<{ count: string }>(
-            `SELECT COUNT(*) as count FROM leads WHERE org_id = $1${status ? ' AND status = $2' : ''}`,
-            status ? [payload.orgId, status] : [payload.orgId]
-        );
+        let countSql = `SELECT COUNT(*) as count FROM leads WHERE org_id = $1`;
+        const countParams: (string | number)[] = [payload.orgId];
+        let countIndex = 2;
+
+        if (status) {
+            countSql += ` AND status = $${countIndex}`;
+            countParams.push(status);
+            countIndex++;
+        }
+        if (formId) {
+            countSql += ` AND form_id = $${countIndex}`;
+            countParams.push(formId);
+        }
+
+        const countResult = await query<{ count: string }>(countSql, countParams);
         const total = parseInt(countResult[0]?.count || '0');
+
+        // Get distinct forms for filter dropdown
+        const forms = await query<FormOption>(
+            `SELECT DISTINCT form_id, form_name FROM leads WHERE org_id = $1 AND form_id IS NOT NULL ORDER BY form_name`,
+            [payload.orgId]
+        );
 
         return NextResponse.json({
             leads: leads || [],
+            forms: forms || [],
             pagination: {
                 page,
                 limit,

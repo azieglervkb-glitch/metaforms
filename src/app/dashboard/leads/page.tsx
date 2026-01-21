@@ -11,25 +11,41 @@ interface Lead {
     status: string;
     quality_status: string;
     quality_feedback_sent: boolean;
+    form_id: string | null;
+    form_name: string | null;
     created_at: string;
+}
+
+interface FormOption {
+    form_id: string;
+    form_name: string;
 }
 
 export default function LeadsPage() {
     const [leads, setLeads] = useState<Lead[]>([]);
+    const [forms, setForms] = useState<FormOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
+    const [formFilter, setFormFilter] = useState<string>('');
 
     useEffect(() => {
         fetchLeads();
-    }, [filter]);
+    }, [filter, formFilter]);
 
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const url = filter === 'all' ? '/api/leads' : `/api/leads?status=${filter}`;
+            let url = '/api/leads?';
+            if (filter !== 'all') {
+                url += `status=${filter}&`;
+            }
+            if (formFilter) {
+                url += `form_id=${formFilter}&`;
+            }
             const res = await fetch(url);
             const data = await res.json();
             setLeads(data.leads || []);
+            setForms(data.forms || []);
         } catch (error) {
             console.error('Error fetching leads:', error);
         }
@@ -84,22 +100,45 @@ export default function LeadsPage() {
             {/* Navigation */}
             <DashboardNav />
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            {/* Header with Filters */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
-                <div className="flex gap-2">
-                    {['all', 'new', 'qualified', 'unqualified'].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setFilter(status)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === status
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-white border text-gray-600 hover:bg-gray-50'
-                                }`}
+                <div className="flex flex-wrap gap-3">
+                    {/* Form Filter */}
+                    {forms.length > 0 && (
+                        <select
+                            value={formFilter}
+                            onChange={(e) => setFormFilter(e.target.value)}
+                            className="px-4 py-2 rounded-lg border text-sm text-gray-600 bg-white"
                         >
-                            {status === 'all' ? 'Alle' : status === 'new' ? 'Neu' : status === 'qualified' ? 'Qualifiziert' : 'Unqualifiziert'}
-                        </button>
-                    ))}
+                            <option value="">Alle Formulare</option>
+                            {forms.map((form) => (
+                                <option key={form.form_id} value={form.form_id}>
+                                    {form.form_name || form.form_id}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* Status Filter */}
+                    <div className="flex gap-2">
+                        {['all', 'new', 'contacted', 'qualified', 'unqualified'].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilter(status)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === status
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white border text-gray-600 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {status === 'all' ? 'Alle' :
+                                    status === 'new' ? 'Neu' :
+                                        status === 'contacted' ? 'Kontaktiert' :
+                                            status === 'qualified' ? 'Qualifiziert' :
+                                                'Unqualifiziert'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -120,69 +159,84 @@ export default function LeadsPage() {
                         </p>
                     </div>
                 ) : (
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
-                            <tr>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">Name</th>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">E-Mail</th>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">Telefon</th>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">Datum</th>
-                                <th className="text-left p-4 text-sm font-medium text-gray-600">Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {leads.map((lead) => (
-                                <tr key={lead.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-4">
-                                        <span className="font-medium text-gray-900">{lead.full_name || '-'}</span>
-                                    </td>
-                                    <td className="p-4 text-gray-600">{lead.email || '-'}</td>
-                                    <td className="p-4 text-gray-600">{lead.phone || '-'}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
-                                            lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            {lead.status === 'qualified' ? 'Qualifiziert' :
-                                                lead.status === 'unqualified' ? 'Unqualifiziert' : 'Neu'}
-                                        </span>
-                                        {lead.quality_feedback_sent && (
-                                            <span className="ml-2 text-xs text-green-600">✓ Signal gesendet</span>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-gray-500 text-sm">{formatDate(lead.created_at)}</td>
-                                    <td className="p-4">
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => updateLeadQuality(lead.id, 'qualified')}
-                                                className="px-3 py-1 rounded bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200"
-                                                title="Als qualifiziert markieren"
-                                            >
-                                                ✓
-                                            </button>
-                                            <button
-                                                onClick={() => updateLeadQuality(lead.id, 'unqualified')}
-                                                className="px-3 py-1 rounded bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200"
-                                                title="Als unqualifiziert markieren"
-                                            >
-                                                ✗
-                                            </button>
-                                            {lead.status === 'qualified' && !lead.quality_feedback_sent && (
-                                                <button
-                                                    onClick={() => sendQualitySignal(lead.id)}
-                                                    className="px-3 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200"
-                                                    title="Signal an Meta senden"
-                                                >
-                                                    📤 Signal
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b">
+                                <tr>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Name</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">E-Mail</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Telefon</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Formular</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Datum</th>
+                                    <th className="text-left p-4 text-sm font-medium text-gray-600">Aktionen</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {leads.map((lead) => (
+                                    <tr key={lead.id} className="border-b hover:bg-gray-50">
+                                        <td className="p-4">
+                                            <span className="font-medium text-gray-900">{lead.full_name || '-'}</span>
+                                        </td>
+                                        <td className="p-4 text-gray-600">{lead.email || '-'}</td>
+                                        <td className="p-4 text-gray-600">{lead.phone || '-'}</td>
+                                        <td className="p-4">
+                                            {lead.form_name ? (
+                                                <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-medium">
+                                                    {lead.form_name}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${lead.status === 'qualified' ? 'bg-green-100 text-green-700' :
+                                                    lead.status === 'unqualified' ? 'bg-red-100 text-red-700' :
+                                                        lead.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                {lead.status === 'qualified' ? 'Qualifiziert' :
+                                                    lead.status === 'unqualified' ? 'Unqualifiziert' :
+                                                        lead.status === 'contacted' ? 'Kontaktiert' :
+                                                            'Neu'}
+                                            </span>
+                                            {lead.quality_feedback_sent && (
+                                                <span className="ml-2 text-xs text-green-600">✓ Signal</span>
+                                            )}
+                                        </td>
+                                        <td className="p-4 text-gray-500 text-sm">{formatDate(lead.created_at)}</td>
+                                        <td className="p-4">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => updateLeadQuality(lead.id, 'qualified')}
+                                                    className="px-3 py-1 rounded bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200"
+                                                    title="Als qualifiziert markieren"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    onClick={() => updateLeadQuality(lead.id, 'unqualified')}
+                                                    className="px-3 py-1 rounded bg-red-100 text-red-700 text-xs font-medium hover:bg-red-200"
+                                                    title="Als unqualifiziert markieren"
+                                                >
+                                                    ✗
+                                                </button>
+                                                {lead.status === 'qualified' && !lead.quality_feedback_sent && (
+                                                    <button
+                                                        onClick={() => sendQualitySignal(lead.id)}
+                                                        className="px-3 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200"
+                                                        title="Signal an Meta senden"
+                                                    >
+                                                        📤
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

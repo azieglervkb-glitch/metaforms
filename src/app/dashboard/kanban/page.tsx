@@ -16,6 +16,7 @@ interface Lead {
     notes: string;
     assigned_to: string | null;
     assigned_name?: string;
+    form_name: string | null;
 }
 
 interface TeamMember {
@@ -165,6 +166,11 @@ export default function KanbanPage() {
                                             <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
                                                 <span>👤</span>
                                                 <span>{getMemberName(lead.assigned_to)}</span>
+                                            </div>
+                                        )}
+                                        {lead.form_name && (
+                                            <div className="mt-1 text-xs text-purple-600 truncate" title={lead.form_name}>
+                                                📋 {lead.form_name}
                                             </div>
                                         )}
                                         <div className="flex items-center justify-between mt-2 pt-2 border-t">

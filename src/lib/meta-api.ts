@@ -129,6 +129,27 @@ export async function getLeadDetails(
 }
 
 /**
+ * Fetch lead form details (name) from Meta
+ */
+export async function getFormDetails(
+    formId: string,
+    accessToken: string
+): Promise<{ id: string; name: string }> {
+    const response = await fetch(
+        `${GRAPH_API_BASE}/${formId}?fields=id,name&access_token=${accessToken}`
+    );
+
+    if (!response.ok) {
+        const error = await response.json();
+        console.error('Failed to get form details:', error);
+        // Return fallback instead of throwing
+        return { id: formId, name: `Form ${formId.slice(-6)}` };
+    }
+
+    return response.json();
+}
+
+/**
  * Subscribe a page to leadgen webhooks
  */
 export async function subscribePageToLeadgen(

@@ -1,7 +1,7 @@
 // Meta Webhook Handler for Lead Generation
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
-import { getLeadDetails } from '@/lib/meta-api';
+import { getLeadDetails, getFormDetails } from '@/lib/meta-api';
 
 interface MetaConnection {
     org_id: string;
@@ -72,8 +72,30 @@ async function processLead(
             return;
         }
 
+        // Check if lead already exists
+        const existing = await queryOne<{ id: string }>(
+            'SELECT id FROM leads WHERE org_id = $1 AND meta_lead_id = $2',
+            [connection.org_id, leadgenId]
+        );
+
+        if (existing) {
+            console.log('Lead already exists:', leadgenId);
+            return;
+        }
+
         // Fetch lead details from Meta
         const leadData = await getLeadDetails(leadgenId, connection.access_token);
+
+        // Fetch form name from Meta
+        let formName = `Form ${formId?.slice(-6) || 'Unknown'}`;
+        if (formId) {
+            try {
+                const formDetails = await getFormDetails(formId, connection.access_token);
+                formName = formDetails.name;
+            } catch (e) {
+                console.error('Failed to fetch form name:', e);
+            }
+        }
 
         // Parse field data
         const fieldMap: Record<string, string> = {};
@@ -86,25 +108,14 @@ async function processLead(
         const email = fieldMap['email'] || null;
         const phone = fieldMap['phone_number'] || fieldMap['phone'] || null;
 
-        // Check if lead already exists
-        const existing = await queryOne<{ id: string }>(
-            'SELECT id FROM leads WHERE org_id = $1 AND meta_lead_id = $2',
-            [connection.org_id, leadgenId]
-        );
-
-        if (existing) {
-            console.log('Lead already exists:', leadgenId);
-            return;
-        }
-
-        // Insert lead into database
+        // Insert lead into database with form info
         await query(
-            `INSERT INTO leads (org_id, meta_lead_id, email, phone, full_name, raw_data, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'new')`,
-            [connection.org_id, leadgenId, email, phone, fullName, JSON.stringify(fieldMap)]
+            `INSERT INTO leads (org_id, meta_lead_id, email, phone, full_name, raw_data, form_id, form_name, ad_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new')`,
+            [connection.org_id, leadgenId, email, phone, fullName, JSON.stringify(fieldMap), formId, formName, adId || null]
         );
 
-        console.log('Lead saved successfully:', leadgenId);
+        console.log('Lead saved successfully:', leadgenId, 'Form:', formName);
 
         // TODO: Send notification (email, WhatsApp, Slack)
     } catch (error) {
