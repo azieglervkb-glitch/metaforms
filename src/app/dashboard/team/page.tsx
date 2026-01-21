@@ -82,6 +82,29 @@ export default function TeamPage() {
         }
     };
 
+    // Helper function to copy text with fallback for HTTP
+    const copyToClipboard = async (text: string): Promise<boolean> => {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } else {
+                // Fallback for HTTP
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                return true;
+            }
+        } catch {
+            return false;
+        }
+    };
+
     const handleGeneratePortalLink = async (memberId: string) => {
         setGeneratingToken(memberId);
         try {
@@ -91,13 +114,19 @@ export default function TeamPage() {
             const data = await res.json();
 
             if (res.ok && data.portalUrl) {
-                await navigator.clipboard.writeText(data.portalUrl);
-                toast.success('Portal-Link in Zwischenablage kopiert!');
+                const copied = await copyToClipboard(data.portalUrl);
+                if (copied) {
+                    toast.success('Portal-Link in Zwischenablage kopiert!');
+                } else {
+                    toast.success('Portal-Link erstellt!');
+                    console.log('Portal URL:', data.portalUrl);
+                }
                 fetchMembers();
             } else {
                 toast.error(data.error || 'Fehler beim Generieren');
             }
-        } catch {
+        } catch (err) {
+            console.error('Generate portal link error:', err);
             toast.error('Fehler beim Generieren');
         }
         setGeneratingToken(null);
@@ -109,10 +138,18 @@ export default function TeamPage() {
             const data = await res.json();
 
             if (res.ok && data.portalUrl) {
-                await navigator.clipboard.writeText(data.portalUrl);
-                toast.success('Portal-Link kopiert!');
+                const copied = await copyToClipboard(data.portalUrl);
+                if (copied) {
+                    toast.success('Portal-Link kopiert!');
+                } else {
+                    toast.error('Kopieren fehlgeschlagen - Link in Konsole');
+                    console.log('Portal URL:', data.portalUrl);
+                }
+            } else {
+                toast.error(data.error || 'Fehler beim Kopieren');
             }
-        } catch {
+        } catch (err) {
+            console.error('Copy portal link error:', err);
             toast.error('Fehler beim Kopieren');
         }
     };
