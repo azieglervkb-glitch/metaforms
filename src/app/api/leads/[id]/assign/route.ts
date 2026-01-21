@@ -66,7 +66,7 @@ export async function POST(
             [userId, leadId]
         );
 
-        // Send email notification
+        // Send email notification with custom template
         try {
             await sendLeadAssignmentEmail({
                 to: assignee.email,
@@ -75,6 +75,7 @@ export async function POST(
                 leadEmail: lead.email || '',
                 leadPhone: lead.phone || '',
                 leadId: lead.id,
+                orgId: payload.orgId,
             });
         } catch (emailError) {
             console.error('Failed to send assignment email:', emailError);

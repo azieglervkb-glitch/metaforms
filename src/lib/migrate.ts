@@ -119,6 +119,21 @@ export async function runMigrations() {
       )
     `);
 
+    // Email templates table (custom email templates per organization)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS email_templates (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+        template_type VARCHAR(50) NOT NULL DEFAULT 'lead_assignment',
+        subject VARCHAR(500) NOT NULL,
+        html_content TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(org_id, template_type)
+      )
+    `);
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);
@@ -126,6 +141,7 @@ export async function runMigrations() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_members_org_id ON team_members(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON lead_email_tokens(token)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_templates_org_id ON email_templates(org_id)`);
 
     console.log('Database migrations completed successfully!');
   } catch (error) {
