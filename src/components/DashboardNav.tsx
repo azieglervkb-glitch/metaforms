@@ -36,14 +36,14 @@ export default function DashboardNav() {
                 <div className="flex items-center gap-4">
                     <nav className="flex gap-2">
                         {NAV_ITEMS.map((item) => {
-                            const is Active = pathname === item.href;
+                            const isActive = pathname === item.href;
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
                                         }`}
                                 >
                                     {item.label}
