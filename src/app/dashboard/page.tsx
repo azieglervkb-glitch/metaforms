@@ -53,20 +53,22 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="space-y-8">
+        <div>
             {/* Navigation */}
             <DashboardNav />
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <StatCard title="Leads Gesamt" value={totalLeads} borderColor="border-l-blue-600" valueColor="text-blue-600" />
-                <StatCard title="Neu" value={newLeads} borderColor="border-l-blue-500" valueColor="text-blue-500" />
-                <StatCard title="Qualifiziert" value={qualifiedLeads} borderColor="border-l-blue-400" valueColor="text-blue-400" />
-                <StatCard title="Signale gesendet" value={signalsSent} borderColor="border-l-blue-300" valueColor="text-blue-300" />
-            </div>
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto p-6">
+                {/* Stats Grid */}
+                <div className="grid gap-4 md:grid-cols-4 mb-8">
+                    <StatCard title="Leads Gesamt" value={totalLeads} />
+                    <StatCard title="Neu" value={newLeads} />
+                    <StatCard title="Qualifiziert" value={qualifiedLeads} />
+                    <StatCard title="Signale gesendet" value={signalsSent} />
+                </div>
 
-            {/* Quick Actions */}
-            <div className="grid gap-4 md:grid-cols-2">
+                {/* Quick Actions */}
+                <div className="grid gap-4 md:grid-cols-2 mb-8"
                 <Card className="border-l-4 border-l-blue-500">
                     <CardContent className="p-6">
                         <h3 className="font-semibold text-gray-900 mb-2">Leads verwalten</h3>
@@ -91,39 +93,33 @@ export default async function DashboardPage() {
                         </Link>
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* Team */}
-            <Card className="border-l-4 border-l-blue-500">
-                <CardContent className="p-6">
-                    <h3 className="font-semibold text-gray-900 mb-2">Team verwalten</h3>
-                    <p className="text-sm text-gray-500 mb-4">Mitarbeiter hinzufügen und Leads zuweisen</p>
-                    <Link href="/dashboard/team" className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-block">
-                        Team öffnen
-                    </Link>
-                </CardContent>
-            </Card>
         </div>
+
+            {/* Team */ }
+    <Card className="border-l-4 border-l-blue-500">
+        <CardContent className="p-6">
+            <h3 className="font-semibold text-gray-900 mb-2">Team verwalten</h3>
+            <p className="text-sm text-gray-500 mb-4">Mitarbeiter hinzufügen und Leads zuweisen</p>
+            <Link href="/dashboard/team" className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-block">
+                Team öffnen
+            </Link>
+        </CardContent>
+    </Card>
+        </div >
     );
 }
 
 function StatCard({
     title,
-    value,
-    borderColor = "border-l-gray-300",
-    valueColor = "text-gray-900"
+    value
 }: {
     title: string;
     value: number;
-    borderColor?: string;
-    valueColor?: string;
 }) {
     return (
-        <Card className={`border-l-4 ${borderColor}`}>
-            <CardContent className="p-4">
-                <p className="text-sm text-gray-500 mb-1">{title}</p>
-                <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
-            </CardContent>
+        <Card className="stat-card p-5">
+            <p className="text-sm text-gray-500 mb-1">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
         </Card>
     );
 }
