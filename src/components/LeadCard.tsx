@@ -126,13 +126,13 @@ export function LeadCard({ lead, onStatusChange, onSendSignal }: LeadCardProps) 
                         </div>
 
                         {/* Custom Fields */}
-                        {Object.keys(lead.raw_data || {}).length > 0 && (
+                        {lead.raw_data && Object.keys(lead.raw_data).length > 0 && (
                             <div>
                                 <h4 className="text-sm font-medium mb-2">Weitere Felder</h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     {Object.entries(lead.raw_data).map(([key, value]) => (
                                         <div key={key} className="p-2 rounded bg-muted text-sm">
-                                            <span className="text-muted-foreground">{key}:</span> {value}
+                                            <span className="text-muted-foreground">{key}:</span> {String(value)}
                                         </div>
                                     ))}
                                 </div>
