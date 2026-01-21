@@ -224,6 +224,11 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                                                     📋 {lead.form_name}
                                                 </div>
                                             )}
+                                            {lead.notes && (
+                                                <div className="mt-2 text-xs text-gray-600 bg-amber-50 border border-amber-100 rounded p-1.5 line-clamp-2" title={lead.notes}>
+                                                    📝 {lead.notes}
+                                                </div>
+                                            )}
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t">
                                                 <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
                                                 {lead.quality_status !== 'pending' && (
