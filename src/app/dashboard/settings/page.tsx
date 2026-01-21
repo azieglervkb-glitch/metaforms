@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardNav from '@/components/DashboardNav';
 import Link from 'next/link';
 
 interface MetaConnection {
@@ -60,8 +59,6 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-6">
-            <DashboardNav />
-
             <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
 
             {/* Meta Connection Card */}

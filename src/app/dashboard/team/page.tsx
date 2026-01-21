@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardNav from '@/components/DashboardNav';
-
 interface TeamMember {
     id: string;
     first_name: string;
@@ -76,9 +74,6 @@ export default function TeamPage() {
 
     return (
         <div className="space-y-6">
-            {/* Navigation */}
-            <DashboardNav />
-
             <h1 className="text-2xl font-bold text-gray-900">Team verwalten</h1>
 
             {/* Add Member Form */}

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardNav from '@/components/DashboardNav';
-
 interface Analytics {
     overview: {
         total: number;
@@ -53,8 +51,6 @@ export default function AnalyticsPage() {
 
     return (
         <div className="space-y-6">
-            <DashboardNav />
-
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
                 <span className="text-sm text-gray-500">Letzte 30 Tage</span>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import DashboardNav from '@/components/DashboardNav';
 import InfoIcon from '@/components/InfoIcon';
 
 interface Lead {
@@ -120,9 +119,6 @@ export default function KanbanPage() {
 
     return (
         <div className="space-y-6">
-            {/* Navigation */}
-            <DashboardNav />
-
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-gray-900">Lead Pipeline</h1>
