@@ -3,35 +3,26 @@ import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import crypto from 'crypto';
 
-interface TeamMember {
-    id: string;
-    org_id: string;
-}
-
-interface PortalToken {
-    token: string;
-}
-
 // GET - Get existing portal token for team member
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const authToken = request.cookies.get('auth_token')?.value;
-        if (!authToken) {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const payload = verifyToken(authToken);
+        const payload = verifyToken(token);
         if (!payload) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { id: memberId } = await params;
 
-        // Verify team member belongs to user's org
-        const member = await queryOne<TeamMember>(
+        // Verify team member belongs to organization
+        const member = await queryOne<{ id: string; org_id: string }>(
             'SELECT id, org_id FROM team_members WHERE id = $1',
             [memberId]
         );
@@ -41,19 +32,19 @@ export async function GET(
         }
 
         // Get existing token
-        const existing = await queryOne<PortalToken>(
+        const existingToken = await queryOne<{ token: string }>(
             'SELECT token FROM team_member_tokens WHERE team_member_id = $1 AND is_active = true',
             [memberId]
         );
 
-        if (!existing) {
+        if (!existingToken) {
             return NextResponse.json({ error: 'No portal token exists' }, { status: 404 });
         }
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
-        const portalUrl = `${appUrl}/portal/${existing.token}`;
+        const portalUrl = `${appUrl}/portal/${existingToken.token}`;
 
-        return NextResponse.json({ portalUrl, token: existing.token });
+        return NextResponse.json({ portalUrl });
     } catch (error) {
         console.error('Get portal token error:', error);
         return NextResponse.json(
@@ -69,20 +60,20 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const authToken = request.cookies.get('auth_token')?.value;
-        if (!authToken) {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const payload = verifyToken(authToken);
+        const payload = verifyToken(token);
         if (!payload) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { id: memberId } = await params;
 
-        // Verify team member belongs to user's org
-        const member = await queryOne<TeamMember>(
+        // Verify team member belongs to organization
+        const member = await queryOne<{ id: string; org_id: string }>(
             'SELECT id, org_id FROM team_members WHERE id = $1',
             [memberId]
         );
@@ -91,25 +82,31 @@ export async function POST(
             return NextResponse.json({ error: 'Team member not found' }, { status: 404 });
         }
 
-        // Deactivate any existing tokens
-        await query(
-            'UPDATE team_member_tokens SET is_active = false WHERE team_member_id = $1',
+        // Check for existing active token
+        const existingToken = await queryOne<{ token: string }>(
+            'SELECT token FROM team_member_tokens WHERE team_member_id = $1 AND is_active = true',
             [memberId]
         );
 
+        if (existingToken) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
+            const portalUrl = `${appUrl}/portal/${existingToken.token}`;
+            return NextResponse.json({ portalUrl, existing: true });
+        }
+
         // Generate new token
-        const token = crypto.randomBytes(32).toString('hex');
+        const newToken = crypto.randomBytes(32).toString('hex');
 
         await query(
             `INSERT INTO team_member_tokens (team_member_id, org_id, token, is_active)
              VALUES ($1, $2, $3, true)`,
-            [memberId, payload.orgId, token]
+            [memberId, payload.orgId, newToken]
         );
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.leadsignal.de';
-        const portalUrl = `${appUrl}/portal/${token}`;
+        const portalUrl = `${appUrl}/portal/${newToken}`;
 
-        return NextResponse.json({ success: true, portalUrl, token });
+        return NextResponse.json({ portalUrl, created: true });
     } catch (error) {
         console.error('Generate portal token error:', error);
         return NextResponse.json(
@@ -119,26 +116,26 @@ export async function POST(
     }
 }
 
-// DELETE - Revoke portal token
+// DELETE - Revoke portal token for team member
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const authToken = request.cookies.get('auth_token')?.value;
-        if (!authToken) {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const payload = verifyToken(authToken);
+        const payload = verifyToken(token);
         if (!payload) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const { id: memberId } = await params;
 
-        // Verify team member belongs to user's org
-        const member = await queryOne<TeamMember>(
+        // Verify team member belongs to organization
+        const member = await queryOne<{ id: string; org_id: string }>(
             'SELECT id, org_id FROM team_members WHERE id = $1',
             [memberId]
         );
@@ -147,7 +144,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Team member not found' }, { status: 404 });
         }
 
-        // Deactivate all tokens
+        // Deactivate all tokens for this member
         await query(
             'UPDATE team_member_tokens SET is_active = false WHERE team_member_id = $1',
             [memberId]
