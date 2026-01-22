@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
         path: '/',
     });
 
-    // Build redirect URL from request
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
+    // Build redirect URL from request headers (handles proxies correctly)
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const redirectUrl = `${protocol}://${host}/login`;
+
+    return NextResponse.redirect(redirectUrl);
 }
