@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
 
     cookieStore.set('auth_token', '', {
@@ -12,5 +12,7 @@ export async function POST() {
         path: '/',
     });
 
-    return NextResponse.json({ success: true });
+    // Build redirect URL from request
+    const url = new URL('/login', request.url);
+    return NextResponse.redirect(url);
 }
