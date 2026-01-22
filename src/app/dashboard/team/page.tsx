@@ -16,6 +16,24 @@ interface TeamMember {
     has_portal_token: boolean;
 }
 
+interface Lead {
+    id: string;
+    email: string;
+    phone: string;
+    full_name: string;
+    status: string;
+    quality_status: string;
+    form_name: string | null;
+    notes: string | null;
+    created_at: string;
+}
+
+interface MemberAnalytics {
+    total: number;
+    byStatus: Record<string, number>;
+    byQuality: Record<string, number>;
+}
+
 export default function TeamPage() {
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +44,12 @@ export default function TeamPage() {
     const [error, setError] = useState('');
     const [generatingToken, setGeneratingToken] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
+
+    // Modal state
+    const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+    const [memberLeads, setMemberLeads] = useState<Lead[]>([]);
+    const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null);
+    const [loadingMemberData, setLoadingMemberData] = useState(false);
 
     useEffect(() => {
         fetchMembers();
@@ -40,6 +64,31 @@ export default function TeamPage() {
             console.error('Error fetching team:', error);
         }
         setLoading(false);
+    };
+
+    const fetchMemberLeads = async (memberId: string) => {
+        setLoadingMemberData(true);
+        try {
+            const res = await fetch(`/api/team/${memberId}/leads`);
+            const data = await res.json();
+            setMemberLeads(data.leads || []);
+            setMemberAnalytics(data.analytics || null);
+        } catch (error) {
+            console.error('Error fetching member leads:', error);
+            toast.error('Fehler beim Laden der Leads');
+        }
+        setLoadingMemberData(false);
+    };
+
+    const handleOpenMemberModal = (member: TeamMember) => {
+        setSelectedMember(member);
+        fetchMemberLeads(member.id);
+    };
+
+    const handleCloseMemberModal = () => {
+        setSelectedMember(null);
+        setMemberLeads([]);
+        setMemberAnalytics(null);
     };
 
     const handleAddMember = async (e: React.FormEvent) => {
@@ -72,7 +121,8 @@ export default function TeamPage() {
         setAdding(false);
     };
 
-    const handleDeleteMember = async (id: string, name: string) => {
+    const handleDeleteMember = async (e: React.MouseEvent, id: string, name: string) => {
+        e.stopPropagation();
         if (!confirm(`${name} wirklich aus dem Team entfernen?`)) return;
 
         try {
@@ -105,7 +155,8 @@ export default function TeamPage() {
         }
     };
 
-    const handleGeneratePortalLink = async (memberId: string) => {
+    const handleGeneratePortalLink = async (e: React.MouseEvent, memberId: string) => {
+        e.stopPropagation();
         setGeneratingToken(memberId);
         try {
             const res = await fetch(`/api/team/${memberId}/portal-token`, {
@@ -132,7 +183,8 @@ export default function TeamPage() {
         setGeneratingToken(null);
     };
 
-    const handleCopyPortalLink = async (memberId: string) => {
+    const handleCopyPortalLink = async (e: React.MouseEvent, memberId: string) => {
+        e.stopPropagation();
         try {
             const res = await fetch(`/api/team/${memberId}/portal-token`);
             const data = await res.json();
@@ -157,6 +209,26 @@ export default function TeamPage() {
     const totalLeads = members.reduce((sum, m) => sum + parseInt(m.total_leads || '0'), 0);
     const totalQualified = members.reduce((sum, m) => sum + parseInt(m.qualified_leads || '0'), 0);
     const totalUnqualified = members.reduce((sum, m) => sum + parseInt(m.unqualified_leads || '0'), 0);
+
+    // Status configuration for kanban
+    const statusConfig = [
+        { key: 'new', label: 'Neu', color: 'bg-blue-500' },
+        { key: 'contacted', label: 'Kontaktiert', color: 'bg-yellow-500' },
+        { key: 'qualified', label: 'Qualifiziert', color: 'bg-purple-500' },
+        { key: 'proposal', label: 'Angebot', color: 'bg-orange-500' },
+        { key: 'won', label: 'Gewonnen', color: 'bg-green-500' },
+        { key: 'lost', label: 'Verloren', color: 'bg-red-500' },
+    ];
+
+    const getLeadsByStatus = (status: string) => memberLeads.filter(l => l.status === status);
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -307,6 +379,172 @@ export default function TeamPage() {
                 </div>
             )}
 
+            {/* Team Member Detail Modal */}
+            {selectedMember && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleCloseMemberModal}>
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                        {/* Modal Header */}
+                        <div className="p-6 border-b flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#0052FF] to-[#0047E1] flex items-center justify-center text-white font-semibold text-xl">
+                                        {selectedMember.first_name[0]}{selectedMember.last_name[0]}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-semibold text-gray-900">
+                                            {selectedMember.first_name} {selectedMember.last_name}
+                                        </h2>
+                                        <p className="text-gray-500">{selectedMember.email}</p>
+                                    </div>
+                                </div>
+                                <button onClick={handleCloseMemberModal} className="text-gray-400 hover:text-gray-600 p-2">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {loadingMemberData ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="w-6 h-6 border-2 border-[#0052FF] border-t-transparent rounded-full animate-spin"></div>
+                                    <span className="ml-3 text-gray-500">Lade Daten...</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Analytics Stats */}
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance-Ubersicht</h3>
+                                        <div className="grid grid-cols-6 gap-3">
+                                            <div className="bg-gray-50 rounded-xl p-4 text-center">
+                                                <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.total || 0}</p>
+                                                <p className="text-xs text-gray-500 mt-1">Gesamt</p>
+                                            </div>
+                                            {statusConfig.map((status) => (
+                                                <div key={status.key} className="bg-gray-50 rounded-xl p-4 text-center">
+                                                    <p className="text-2xl font-bold text-gray-900">
+                                                        {memberAnalytics?.byStatus[status.key] || 0}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-1">{status.label}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Quality Stats */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-2xl font-bold text-amber-700">{memberAnalytics?.byQuality['pending'] || 0}</p>
+                                                    <p className="text-sm text-amber-600">Ausstehend</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-2xl font-bold text-green-700">{memberAnalytics?.byQuality['qualified'] || 0}</p>
+                                                    <p className="text-sm text-green-600">Qualifiziert</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                                                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-2xl font-bold text-red-700">{memberAnalytics?.byQuality['unqualified'] || 0}</p>
+                                                    <p className="text-sm text-red-600">Nicht qualifiziert</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Kanban Board */}
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Zugewiesene Leads</h3>
+                                        {memberLeads.length === 0 ? (
+                                            <div className="bg-gray-50 rounded-xl p-8 text-center">
+                                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                                                    </svg>
+                                                </div>
+                                                <p className="text-gray-500">Noch keine Leads zugewiesen</p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-6 gap-3">
+                                                {statusConfig.map((status) => {
+                                                    const leads = getLeadsByStatus(status.key);
+                                                    return (
+                                                        <div key={status.key} className="bg-gray-50 rounded-xl overflow-hidden">
+                                                            {/* Column Header */}
+                                                            <div className={`px-3 py-2 ${status.color}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-white text-sm font-medium">{status.label}</span>
+                                                                    <span className="text-white/80 text-xs bg-white/20 px-1.5 py-0.5 rounded">
+                                                                        {leads.length}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {/* Leads */}
+                                                            <div className="p-2 space-y-2 max-h-[300px] overflow-y-auto">
+                                                                {leads.length === 0 ? (
+                                                                    <p className="text-xs text-gray-400 text-center py-4">Keine Leads</p>
+                                                                ) : (
+                                                                    leads.map((lead) => (
+                                                                        <div
+                                                                            key={lead.id}
+                                                                            className="bg-white rounded-lg p-2.5 border border-gray-200 hover:shadow-sm transition-shadow"
+                                                                        >
+                                                                            <p className="font-medium text-gray-900 text-sm truncate">
+                                                                                {lead.full_name || lead.email}
+                                                                            </p>
+                                                                            {lead.form_name && (
+                                                                                <p className="text-xs text-gray-500 truncate mt-0.5">{lead.form_name}</p>
+                                                                            )}
+                                                                            <div className="flex items-center justify-between mt-2">
+                                                                                <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
+                                                                                {lead.quality_status === 'qualified' && (
+                                                                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                                                                )}
+                                                                                {lead.quality_status === 'unqualified' && (
+                                                                                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Team Members Grid */}
             {loading ? (
                 <div className="text-center py-12 text-gray-500">Ladt...</div>
@@ -336,7 +574,11 @@ export default function TeamPage() {
                         const rate = rated > 0 ? Math.round((qualified / rated) * 100) : null;
 
                         return (
-                            <div key={member.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                            <div
+                                key={member.id}
+                                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-[#0052FF]/30 transition-all cursor-pointer"
+                                onClick={() => handleOpenMemberModal(member)}
+                            >
                                 {/* Header with Avatar */}
                                 <div className="p-5 border-b border-gray-100">
                                     <div className="flex items-start justify-between">
@@ -352,7 +594,7 @@ export default function TeamPage() {
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => handleDeleteMember(member.id, `${member.first_name} ${member.last_name}`)}
+                                            onClick={(e) => handleDeleteMember(e, member.id, `${member.first_name} ${member.last_name}`)}
                                             className="text-gray-400 hover:text-red-500 transition-colors p-1"
                                             title="Entfernen"
                                         >
@@ -389,28 +631,42 @@ export default function TeamPage() {
 
                                 {/* Portal Link Action */}
                                 <div className="p-4 border-t border-gray-100">
-                                    {member.has_portal_token ? (
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => handleCopyPortalLink(member.id)}
-                                            className="w-full px-4 py-2.5 bg-green-50 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenMemberModal(member);
+                                            }}
+                                            className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                             </svg>
-                                            Portal-Link kopieren
+                                            Details
                                         </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleGeneratePortalLink(member.id)}
-                                            disabled={generatingToken === member.id}
-                                            className="w-full px-4 py-2.5 bg-[#0052FF]/10 text-[#0052FF] rounded-lg font-medium hover:bg-[#0052FF]/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                            </svg>
-                                            {generatingToken === member.id ? 'Erstellen...' : 'Portal-Link erstellen'}
-                                        </button>
-                                    )}
+                                        {member.has_portal_token ? (
+                                            <button
+                                                onClick={(e) => handleCopyPortalLink(e, member.id)}
+                                                className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors flex items-center justify-center gap-1.5"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                                Link
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => handleGeneratePortalLink(e, member.id)}
+                                                disabled={generatingToken === member.id}
+                                                className="flex-1 px-3 py-2 bg-[#0052FF]/10 text-[#0052FF] rounded-lg text-sm font-medium hover:bg-[#0052FF]/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                                {generatingToken === member.id ? '...' : 'Portal'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -440,7 +696,7 @@ export default function TeamPage() {
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-[#0052FF] mt-0.5">3.</span>
-                                    <span>Im Portal sieht das Mitglied seine Leads und kann bewerten</span>
+                                    <span>Klicke auf ein Mitglied um alle zugewiesenen Leads zu sehen</span>
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-[#0052FF] mt-0.5">4.</span>
