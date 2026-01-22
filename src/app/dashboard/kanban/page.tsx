@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import InfoIcon from '@/components/InfoIcon';
 
 interface Lead {
     id: string;
@@ -26,14 +25,13 @@ interface TeamMember {
     email: string;
 }
 
-// Funnel stages with CAPI signal info
 const COLUMNS = [
-    { id: 'new', title: 'Neu', color: 'bg-yellow-500', emoji: '📥', sendsCAPI: false, info: 'Neue Leads von Meta Lead Forms. Noch nicht kontaktiert.' },
-    { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', emoji: '📞', sendsCAPI: false, info: 'Lead wurde angerufen oder per E-Mail kontaktiert.' },
-    { id: 'interested', title: 'Interessiert', color: 'bg-purple-500', emoji: '💬', sendsCAPI: true, info: 'Lead zeigt echtes Interesse. CAPI-Signal wird an Meta gesendet!' },
-    { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', emoji: '📅', sendsCAPI: true, info: 'Termin wurde vereinbart. CAPI-Signal wird an Meta gesendet!' },
-    { id: 'won', title: 'Gewonnen', color: 'bg-green-500', emoji: '🏆', sendsCAPI: true, info: 'Deal abgeschlossen! CAPI-Signal wird an Meta gesendet!' },
-    { id: 'lost', title: 'Verloren', color: 'bg-red-500', emoji: '❌', sendsCAPI: false, info: 'Lead nicht qualifiziert oder abgesprungen.' },
+    { id: 'new', title: 'Neu', color: 'bg-amber-500', textColor: 'text-amber-700', bgLight: 'bg-amber-50', sendsCAPI: false },
+    { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', textColor: 'text-blue-700', bgLight: 'bg-blue-50', sendsCAPI: false },
+    { id: 'interested', title: 'Interessiert', color: 'bg-purple-500', textColor: 'text-purple-700', bgLight: 'bg-purple-50', sendsCAPI: true },
+    { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', textColor: 'text-indigo-700', bgLight: 'bg-indigo-50', sendsCAPI: true },
+    { id: 'won', title: 'Gewonnen', color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50', sendsCAPI: true },
+    { id: 'lost', title: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50', sendsCAPI: false },
 ];
 
 export default function KanbanPage() {
@@ -73,15 +71,22 @@ export default function KanbanPage() {
     };
 
     const updateLeadStatus = async (leadId: string, status: string) => {
+        // Optimistic update
+        const previousLeads = leads;
+        setLeads(leads.map(l => l.id === leadId ? { ...l, status } : l));
+
         try {
-            await fetch(`/api/leads/${leadId}`, {
+            const res = await fetch(`/api/leads/${leadId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
             });
-            fetchLeads();
+            if (!res.ok) {
+                setLeads(previousLeads);
+            }
         } catch (error) {
             console.error('Error updating lead:', error);
+            setLeads(previousLeads);
         }
     };
 
@@ -117,94 +122,164 @@ export default function KanbanPage() {
         return member ? `${member.first_name} ${member.last_name}` : null;
     };
 
+    // Stats
+    const totalLeads = leads.length;
+    const qualifiedLeads = leads.filter(l => l.status === 'won' || l.status === 'interested' || l.status === 'meeting').length;
+    const lostLeads = leads.filter(l => l.status === 'lost').length;
+
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-gray-900">Lead Pipeline</h1>
-                    <InfoIcon
-                        text="Verschiebe Leads durch die Pipeline. Bei 'Interessiert', 'Termin' und 'Gewonnen' wird automatisch ein Signal an Meta gesendet, das den Algorithmus trainiert."
-                        position="right"
-                    />
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
+                    <p className="text-gray-500 text-sm mt-1">Ziehe Leads durch die Pipeline - qualifizierte Leads trainieren Meta</p>
                 </div>
-                <p className="text-sm text-gray-500">Drag & Drop oder klicken für Details</p>
+                <button
+                    onClick={() => fetchData()}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Aktualisieren
+                </button>
             </div>
 
-            {loading ? (
-                <div className="text-center py-12 text-gray-500">Lädt...</div>
-            ) : (
-                <div className="grid grid-cols-6 gap-3 min-h-[600px]">
-                    {COLUMNS.map((column) => (
-                        <div
-                            key={column.id}
-                            className="bg-gray-50 rounded-xl p-3"
-                            onDragOver={handleDragOver}
-                            onDrop={() => handleDrop(column.id)}
-                        >
-                            <div className="flex items-center gap-1.5 mb-3">
-                                <span className="text-lg">{column.emoji}</span>
-                                <h2 className="font-semibold text-gray-700 text-sm">{column.title}</h2>
-                                <InfoIcon text={column.info} position="bottom" />
-                                {column.sendsCAPI && (
-                                    <span className="text-xs text-green-600" title="Sendet CAPI-Signal">📤</span>
-                                )}
-                                <span className="ml-auto bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                                    {getLeadsByStatus(column.id).length}
-                                </span>
-                            </div>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-[#0052FF]/10 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[#0052FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Leads in Pipeline</p>
+                            <p className="text-2xl font-bold text-gray-900">{totalLeads}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Qualifiziert</p>
+                            <p className="text-2xl font-bold text-green-600">{qualifiedLeads}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Verloren</p>
+                            <p className="text-2xl font-bold text-red-600">{lostLeads}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                            <div className="space-y-2">
-                                {getLeadsByStatus(column.id).map((lead) => (
-                                    <div
-                                        key={lead.id}
-                                        draggable
-                                        onDragStart={() => handleDragStart(lead.id)}
-                                        onClick={() => setSelectedLead(lead)}
-                                        className={`bg-white rounded-lg border p-3 cursor-pointer hover:shadow-md transition-shadow ${dragging === lead.id ? 'opacity-50' : ''
-                                            }`}
-                                    >
-                                        <div className="font-medium text-gray-900 text-sm mb-1">
-                                            {lead.full_name || lead.email || 'Unbekannt'}
-                                        </div>
-                                        {lead.email && (
-                                            <div className="text-xs text-gray-500 truncate">{lead.email}</div>
-                                        )}
-                                        {lead.phone && (
-                                            <div className="text-xs text-gray-500">{lead.phone}</div>
-                                        )}
-                                        {lead.assigned_to && (
-                                            <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
-                                                <span>👤</span>
-                                                <span>{getMemberName(lead.assigned_to)}</span>
-                                            </div>
-                                        )}
-                                        {lead.form_name && (
-                                            <div className="mt-1 text-xs text-purple-600 truncate" title={lead.form_name}>
-                                                📋 {lead.form_name}
-                                            </div>
-                                        )}
-                                        {lead.notes && (
-                                            <div className="mt-2 text-xs text-gray-600 bg-amber-50 border border-amber-100 rounded p-1.5 line-clamp-2" title={lead.notes}>
-                                                📝 {lead.notes}
-                                            </div>
-                                        )}
-                                        <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                                            <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
-                                            {lead.quality_feedback_sent && (
-                                                <span className="text-xs text-green-600">✓ Signal</span>
+            {/* Kanban Board */}
+            {loading ? (
+                <div className="flex justify-center py-12">
+                    <div className="w-8 h-8 border-4 border-[#0052FF] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            ) : (
+                <div className="grid grid-cols-6 gap-4 min-h-[600px]">
+                    {COLUMNS.map((column) => {
+                        const columnLeads = getLeadsByStatus(column.id);
+                        return (
+                            <div
+                                key={column.id}
+                                className="bg-white rounded-xl border border-gray-200 flex flex-col"
+                                onDragOver={handleDragOver}
+                                onDrop={() => handleDrop(column.id)}
+                            >
+                                {/* Column Header */}
+                                <div className="p-3 border-b border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${column.color}`}></div>
+                                            <h2 className="font-semibold text-gray-900 text-sm">{column.title}</h2>
+                                            {column.sendsCAPI && (
+                                                <span className="text-xs text-green-600" title="Sendet Signal an Meta">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                </span>
                                             )}
                                         </div>
+                                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${column.bgLight} ${column.textColor}`}>
+                                            {columnLeads.length}
+                                        </span>
                                     </div>
-                                ))}
+                                </div>
 
-                                {getLeadsByStatus(column.id).length === 0 && (
-                                    <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed rounded-lg">
-                                        Leads hierher ziehen
-                                    </div>
-                                )}
+                                {/* Column Content */}
+                                <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                                    {columnLeads.map((lead) => (
+                                        <div
+                                            key={lead.id}
+                                            draggable
+                                            onDragStart={() => handleDragStart(lead.id)}
+                                            onClick={() => setSelectedLead(lead)}
+                                            className={`bg-gray-50 hover:bg-gray-100 rounded-lg p-3 cursor-pointer transition-all border border-transparent hover:border-gray-200 hover:shadow-sm ${dragging === lead.id ? 'opacity-50 scale-95' : ''}`}
+                                        >
+                                            <div className="font-medium text-gray-900 text-sm mb-1">
+                                                {lead.full_name || lead.email || 'Unbekannt'}
+                                            </div>
+                                            {lead.email && (
+                                                <div className="text-xs text-gray-500 truncate">{lead.email}</div>
+                                            )}
+                                            {lead.phone && (
+                                                <div className="text-xs text-gray-500">{lead.phone}</div>
+                                            )}
+                                            {lead.assigned_to && (
+                                                <div className="mt-2 flex items-center gap-1">
+                                                    <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white text-[8px]">
+                                                        {getMemberName(lead.assigned_to)?.charAt(0) || '?'}
+                                                    </div>
+                                                    <span className="text-xs text-blue-600 truncate">{getMemberName(lead.assigned_to)}</span>
+                                                </div>
+                                            )}
+                                            {lead.notes && (
+                                                <div className="mt-2 text-xs text-gray-600 bg-amber-50 border border-amber-100 rounded p-1.5 line-clamp-2">
+                                                    {lead.notes}
+                                                </div>
+                                            )}
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200">
+                                                <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
+                                                {lead.quality_feedback_sent && (
+                                                    <span className="text-xs text-green-600 flex items-center gap-0.5">
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        Signal
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {columnLeads.length === 0 && (
+                                        <div className="text-center py-8 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg">
+                                            Leads hierher ziehen
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -258,62 +333,23 @@ function LeadDetailModal({
         if (!assignedTo) return;
         setAssigning(true);
 
-        const requestData = { leadId: lead.id, teamMemberId: assignedTo };
-        console.log('=== ASSIGN REQUEST ===');
-        console.log('URL: /api/leads/assign');
-        console.log('Data:', requestData);
-
         try {
             const res = await fetch('/api/leads/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData),
+                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
             });
 
-            console.log('Response status:', res.status);
-            console.log('Response headers:', Object.fromEntries(res.headers.entries()));
-
-            // Handle non-JSON responses
-            const contentType = res.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const textResponse = await res.text();
-                console.error('Non-JSON response:', res.status, res.statusText, textResponse);
-                alert(`Server-Fehler: ${res.status} ${res.statusText}`);
-                setAssigning(false);
-                return;
-            }
-
             const data = await res.json();
-            console.log('Response data:', data);
-
             if (res.ok && data.success) {
-                console.log('=== ASSIGN SUCCESS ===');
                 alert(data.message || 'Lead erfolgreich zugewiesen!');
                 onUpdate();
             } else {
-                console.error('=== ASSIGN FAILED ===');
-                console.error('Status:', res.status);
-                console.error('Data:', data);
-
-                // Translate common API errors to German
-                const errorMessages: Record<string, string> = {
-                    'Unauthorized': 'Nicht autorisiert. Bitte erneut anmelden.',
-                    'Invalid token': 'Sitzung abgelaufen. Bitte erneut anmelden.',
-                    'Lead not found': 'Lead nicht gefunden.',
-                    'Access denied': 'Zugriff verweigert.',
-                    'Team member not found': 'Team-Mitglied nicht gefunden.',
-                    'Team member not in same organization': 'Team-Mitglied gehort nicht zur Organisation.',
-                    'Failed to assign lead': 'Zuweisung fehlgeschlagen. Bitte erneut versuchen.',
-                    'leadId and teamMemberId are required': 'Lead und Team-Mitglied sind erforderlich.',
-                };
-                const apiError = data.error || data.message || '';
-                const errorMsg = apiError ? (errorMessages[apiError] || apiError) : `Fehler (Status: ${res.status})`;
-                alert(errorMsg);
+                alert(data.error || 'Fehler beim Zuweisen');
             }
         } catch (error) {
-            console.error('=== ASSIGN NETWORK ERROR ===');
-            console.error('Error:', error);
-            alert('Netzwerkfehler beim Zuweisen. Bitte erneut versuchen.');
+            console.error('Error assigning:', error);
+            alert('Netzwerkfehler beim Zuweisen');
         }
         setAssigning(false);
     };
@@ -339,65 +375,69 @@ function LeadDetailModal({
         setSending(false);
     };
 
+    const statusOptions = [
+        { id: 'new', label: 'Neu', color: 'bg-amber-500' },
+        { id: 'contacted', label: 'Kontaktiert', color: 'bg-blue-500' },
+        { id: 'interested', label: 'Interessiert', color: 'bg-purple-500' },
+        { id: 'meeting', label: 'Termin', color: 'bg-indigo-500' },
+        { id: 'won', label: 'Gewonnen', color: 'bg-green-500' },
+        { id: 'lost', label: 'Verloren', color: 'bg-red-500' },
+    ];
+
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="p-6 border-b sticky top-0 bg-white">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                {/* Modal Header */}
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-gray-900">Lead Details</h2>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">{lead.full_name || 'Lead Details'}</h2>
+                            <p className="text-sm text-gray-500 mt-0.5">Erstellt am {new Date(lead.created_at).toLocaleDateString('de-DE')}</p>
+                        </div>
+                        <button onClick={onClose} className="w-10 h-10 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
+                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
                     {/* Contact Info */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs text-gray-500">Name</label>
-                            <p className="font-medium text-lg">{lead.full_name || '-'}</p>
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">E-Mail</label>
+                            <p className="font-medium text-gray-900 mt-1">
+                                {lead.email ? (
+                                    <a href={`mailto:${lead.email}`} className="text-[#0052FF] hover:underline">{lead.email}</a>
+                                ) : '-'}
+                            </p>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500">E-Mail</label>
-                            <p className="font-medium">{lead.email || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500">Telefon</label>
-                            <p className="font-medium">{lead.phone || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500">Erstellt am</label>
-                            <p className="font-medium">
-                                {new Date(lead.created_at).toLocaleDateString('de-DE', {
-                                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                                })}
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefon</label>
+                            <p className="font-medium text-gray-900 mt-1">
+                                {lead.phone ? (
+                                    <a href={`tel:${lead.phone}`} className="text-[#0052FF] hover:underline">{lead.phone}</a>
+                                ) : '-'}
                             </p>
                         </div>
                     </div>
 
                     {/* Status Selection */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-2">Status</label>
-                        <div className="flex flex-wrap gap-2">
-                            {['new', 'contacted', 'qualified', 'unqualified'].map((s) => (
+                        <label className="text-sm font-semibold text-gray-900 block mb-3">Status</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {statusOptions.map((s) => (
                                 <button
-                                    key={s}
-                                    onClick={() => setStatus(s)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${status === s
-                                        ? s === 'qualified' ? 'bg-green-500 text-white' :
-                                            s === 'unqualified' ? 'bg-red-500 text-white' :
-                                                s === 'contacted' ? 'bg-blue-500 text-white' :
-                                                    'bg-yellow-500 text-white'
+                                    key={s.id}
+                                    onClick={() => setStatus(s.id)}
+                                    className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${status === s.id
+                                        ? `${s.color} text-white shadow-lg`
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
+                                    }`}
                                 >
-                                    {s === 'new' ? 'Neu' :
-                                        s === 'contacted' ? 'Kontaktiert' :
-                                            s === 'qualified' ? '✓ Qualifiziert' :
-                                                '✗ Unqualifiziert'}
+                                    <div className={`w-2 h-2 rounded-full ${status === s.id ? 'bg-white' : s.color}`}></div>
+                                    {s.label}
                                 </button>
                             ))}
                         </div>
@@ -405,32 +445,32 @@ function LeadDetailModal({
 
                     {/* Team Assignment */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-2">Zuweisen an</label>
+                        <label className="text-sm font-semibold text-gray-900 block mb-3">Team-Mitglied zuweisen</label>
                         <div className="flex gap-3">
                             <select
                                 value={assignedTo}
                                 onChange={(e) => setAssignedTo(e.target.value)}
-                                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
                             >
-                                <option value="">-- Mitarbeiter wählen --</option>
+                                <option value="">-- Mitarbeiter wahlen --</option>
                                 {teamMembers.map((member) => (
                                     <option key={member.id} value={member.id}>
-                                        {member.first_name} {member.last_name} ({member.email})
+                                        {member.first_name} {member.last_name}
                                     </option>
                                 ))}
                             </select>
                             <button
                                 onClick={handleAssign}
                                 disabled={!assignedTo || assigning}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+                                className="px-4 py-2.5 bg-[#0052FF] text-white rounded-xl text-sm font-medium hover:bg-[#0047E1] disabled:opacity-50 transition-colors"
                             >
-                                {assigning ? 'Zuweisen...' : 'Zuweisen & Benachrichtigen'}
+                                {assigning ? 'Zuweisen...' : 'Zuweisen'}
                             </button>
                         </div>
                         {teamMembers.length === 0 && (
                             <p className="text-sm text-gray-500 mt-2">
-                                <Link href="/dashboard/team" className="text-blue-500 hover:underline">
-                                    Team-Mitglieder hinzufügen →
+                                <Link href="/dashboard/team" className="text-[#0052FF] hover:underline">
+                                    Team-Mitglieder hinzufugen →
                                 </Link>
                             </p>
                         )}
@@ -438,44 +478,55 @@ function LeadDetailModal({
 
                     {/* Notes */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-2">Notizen</label>
+                        <label className="text-sm font-semibold text-gray-900 block mb-3">Notizen</label>
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Notizen zum Lead..."
-                            className="w-full p-3 border rounded-lg resize-none h-24 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Notizen zum Lead hinzufugen..."
+                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-28 focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none transition-all"
                         />
                     </div>
 
-                    {/* Actions */}
+                    {/* Signal Status */}
+                    {lead.quality_feedback_sent && (
+                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Qualitatssignal wurde bereits an Meta gesendet
+                        </div>
+                    )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-6 border-t border-gray-100 bg-gray-50">
                     <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                        >
+                            Abbrechen
+                        </button>
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="px-6 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50"
+                            className="flex-1 px-6 py-3 bg-[#0052FF] text-white rounded-xl font-medium hover:bg-[#0047E1] disabled:opacity-50 transition-colors"
                         >
-                            {saving ? 'Speichert...' : 'Änderungen speichern'}
+                            {saving ? 'Speichert...' : 'Speichern'}
                         </button>
-
-                        {status === 'qualified' && !lead.quality_feedback_sent && (
+                        {(status === 'interested' || status === 'meeting' || status === 'won') && !lead.quality_feedback_sent && (
                             <button
                                 onClick={handleSendSignal}
                                 disabled={sending}
-                                className="px-6 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+                                className="px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 disabled:opacity-50 transition-colors flex items-center gap-2"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
-                                {sending ? 'Sendet...' : 'Signal an Meta'}
+                                {sending ? 'Sendet...' : 'Signal'}
                             </button>
                         )}
                     </div>
-
-                    {lead.quality_feedback_sent && (
-                        <div className="p-4 bg-green-50 rounded-lg text-green-700 text-sm">
-                            ✓ Qualitätssignal wurde bereits an Meta gesendet
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

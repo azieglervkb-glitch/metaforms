@@ -31,6 +31,17 @@ interface FormOption {
     form_name: string;
 }
 
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    new: { label: 'Neu', color: 'text-amber-700', bg: 'bg-amber-50' },
+    contacted: { label: 'Kontaktiert', color: 'text-blue-700', bg: 'bg-blue-50' },
+    interested: { label: 'Interessiert', color: 'text-purple-700', bg: 'bg-purple-50' },
+    meeting: { label: 'Termin', color: 'text-indigo-700', bg: 'bg-indigo-50' },
+    qualified: { label: 'Qualifiziert', color: 'text-green-700', bg: 'bg-green-50' },
+    won: { label: 'Gewonnen', color: 'text-green-700', bg: 'bg-green-50' },
+    unqualified: { label: 'Unqualifiziert', color: 'text-red-700', bg: 'bg-red-50' },
+    lost: { label: 'Verloren', color: 'text-red-700', bg: 'bg-red-50' },
+};
+
 export default function LeadsPage() {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [forms, setForms] = useState<FormOption[]>([]);
@@ -39,6 +50,7 @@ export default function LeadsPage() {
     const [filter, setFilter] = useState<string>('all');
     const [formFilter, setFormFilter] = useState<string>('');
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchLeads();
@@ -75,35 +87,16 @@ export default function LeadsPage() {
         setLoading(false);
     };
 
-    const updateLeadQuality = async (leadId: string, qualityStatus: string) => {
-        try {
-            await fetch(`/api/leads/${leadId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: qualityStatus }),
-            });
-            fetchLeads();
-        } catch (error) {
-            console.error('Error updating lead:', error);
-        }
-    };
-
     const createTestLead = async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/leads/test', {
-                method: 'POST',
-            });
+            const res = await fetch('/api/leads/test', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
                 await fetchLeads();
-                alert(`Test-Lead erstellt: ${data.lead.full_name}`);
-            } else {
-                alert(data.error || 'Fehler beim Erstellen');
             }
         } catch (error) {
             console.error('Error creating test lead:', error);
-            alert('Fehler beim Erstellen des Test-Leads');
         } finally {
             setLoading(false);
         }
@@ -113,195 +106,251 @@ export default function LeadsPage() {
         return new Date(dateString).toLocaleDateString('de-DE', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
+            year: '2-digit',
         });
     };
 
+    const filteredLeads = leads.filter(lead => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            lead.full_name?.toLowerCase().includes(query) ||
+            lead.email?.toLowerCase().includes(query) ||
+            lead.phone?.includes(query)
+        );
+    });
+
+    // Stats
+    const totalLeads = leads.length;
+    const newLeads = leads.filter(l => l.status === 'new').length;
+    const qualifiedLeads = leads.filter(l => l.status === 'qualified' || l.status === 'won').length;
+    const unqualifiedLeads = leads.filter(l => l.status === 'unqualified' || l.status === 'lost').length;
+
     return (
-        <>
-            {/* Section Header */}
-            <div className="mb-6">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Lead Management</h2>
-            </div>
-
-            {/* Header with Title only */}
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-semibold text-gray-900">Leads</h1>
-            </div>
-
-            {/* Filter & Actions Bar */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
-                {/* Left: Status Tabs */}
-                <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto max-w-full no-scrollbar">
-                    {[
-                        { id: 'all', label: 'Alle' },
-                        { id: 'new', label: 'Neu' },
-                        { id: 'contacted', label: 'Kontaktiert' },
-                        { id: 'qualified', label: 'Qualifiziert' },
-                        { id: 'unqualified', label: 'Unqualifiziert' },
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setFilter(tab.id)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${filter === tab.id
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+                    <p className="text-gray-500 text-sm mt-1">Alle eingegangenen Leads verwalten</p>
                 </div>
+                <button
+                    onClick={createTestLead}
+                    disabled={loading}
+                    className="px-4 py-2.5 bg-[#0052FF] text-white rounded-lg font-medium hover:bg-[#0047E1] transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Test-Lead
+                </button>
+            </div>
 
-                {/* Right: Form Filter + Test Lead */}
-                <div className="flex items-center gap-3 w-full lg:w-auto">
-                    <div className="relative flex-1 lg:flex-none">
-                        <select
-                            value={formFilter}
-                            onChange={(e) => setFormFilter(e.target.value)}
-                            className="select-field w-full lg:w-64 appearance-none pl-4 pr-10 bg-white border border-gray-200 rounded-lg text-sm py-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                        >
-                            <option value="">Alle Formulare</option>
-                            {forms.map((f) => (
-                                <option key={f.form_id} value={f.form_id}>
-                                    {f.form_name}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-[#0052FF]/10 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-[#0052FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Gesamt</p>
+                            <p className="text-2xl font-bold text-gray-900">{totalLeads}</p>
                         </div>
                     </div>
-
-                    <button
-                        onClick={createTestLead}
-                        disabled={loading}
-                        className="btn-secondary text-xs py-2.5 px-3 whitespace-nowrap flex items-center gap-2 border border-blue-500 text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
-                        title="Einen Test-Lead generieren"
-                    >
-                        <span>+ Test-Lead</span>
-                    </button>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Neu</p>
+                            <p className="text-2xl font-bold text-amber-600">{newLeads}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Qualifiziert</p>
+                            <p className="text-2xl font-bold text-green-600">{qualifiedLeads}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Unqualifiziert</p>
+                            <p className="text-2xl font-bold text-red-600">{unqualifiedLeads}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Leads Table */}
+            {/* Filters */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex flex-wrap gap-4 items-center">
+                    {/* Search */}
+                    <div className="relative flex-1 min-w-[200px]">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Suchen nach Name, E-Mail, Telefon..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        {[
+                            { id: 'all', label: 'Alle' },
+                            { id: 'new', label: 'Neu' },
+                            { id: 'contacted', label: 'Kontaktiert' },
+                            { id: 'qualified', label: 'Qualifiziert' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setFilter(tab.id)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === tab.id
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Form Filter */}
+                    <select
+                        value={formFilter}
+                        onChange={(e) => setFormFilter(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
+                    >
+                        <option value="">Alle Formulare</option>
+                        {forms.map((f) => (
+                            <option key={f.form_id} value={f.form_id}>{f.form_name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Leads Grid */}
             {loading ? (
                 <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="w-8 h-8 border-4 border-[#0052FF] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            ) : filteredLeads.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Keine Leads gefunden</h3>
+                    <p className="text-gray-500 mb-6">Erstelle einen Test-Lead oder verbinde Meta Lead Ads</p>
+                    <button
+                        onClick={createTestLead}
+                        className="px-6 py-2.5 bg-[#0052FF] text-white rounded-lg font-medium hover:bg-[#0047E1] transition-colors"
+                    >
+                        Test-Lead erstellen
+                    </button>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">E-Mail</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Telefon</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Formular</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Zugewiesen</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Datum</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Aktionen</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {leads.map((lead) => (
-                                    <tr
-                                        key={lead.id}
-                                        className="table-row cursor-pointer hover:bg-gray-50 transition-colors"
-                                        onClick={() => setSelectedLead(lead)}
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900 max-w-[150px] truncate" title={lead.full_name}>
-                                                {lead.full_name}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-500 max-w-[200px] truncate" title={lead.email}>
-                                                {lead.email}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-500">
-                                                {lead.phone || '-'}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 max-w-[120px] truncate block" title={lead.form_name || ''}>
-                                                {lead.form_name || 'Unbekannt'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {lead.assigned_to ? (
-                                                <div className="flex items-center">
-                                                    <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium mr-2">
-                                                        {lead.assignee_name?.charAt(0) || 'U'}
-                                                    </div>
-                                                    <span className="text-sm text-gray-900 max-w-[100px] truncate">{lead.assignee_name}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="px-2 py-1 text-xs text-gray-500 border border-gray-200 rounded-md">
-                                                    Nicht zugewiesen
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${lead.status === 'new' ? 'bg-yellow-100 text-yellow-800' :
-                                                lead.status === 'qualified' ? 'bg-green-100 text-green-800' :
-                                                    lead.status === 'unqualified' ? 'bg-red-100 text-red-800' :
-                                                        'bg-blue-100 text-blue-800' // Contacted
-                                                }`}>
-                                                {lead.status === 'new' ? 'Neu' :
-                                                    lead.status === 'qualified' ? 'Qualifiziert' :
-                                                        lead.status === 'unqualified' ? 'Unqualifiziert' :
-                                                            'Kontaktiert'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {formatDate(lead.created_at)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => updateLeadQuality(lead.id, 'qualified')}
-                                                    className="text-green-600 hover:text-green-900 bg-green-50 px-2 py-1 rounded border border-green-200 hover:bg-green-100 transition-colors text-xs"
-                                                >
-                                                    Qual.
-                                                </button>
-                                                <button
-                                                    onClick={() => updateLeadQuality(lead.id, 'unqualified')}
-                                                    className="text-gray-600 hover:text-gray-900 bg-gray-50 px-2 py-1 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-xs"
-                                                >
-                                                    Ablehnen
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredLeads.map((lead) => {
+                        const statusConfig = STATUS_CONFIG[lead.status] || STATUS_CONFIG.new;
+                        return (
+                            <div
+                                key={lead.id}
+                                onClick={() => setSelectedLead(lead)}
+                                className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-lg hover:border-gray-300 transition-all"
+                            >
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0052FF] to-[#0047E1] flex items-center justify-center text-white font-semibold">
+                                            {lead.full_name?.charAt(0)?.toUpperCase() || '?'}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900 truncate max-w-[150px]">
+                                                {lead.full_name || 'Unbekannt'}
+                                            </h3>
+                                            <p className="text-xs text-gray-500">{formatDate(lead.created_at)}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusConfig.bg} ${statusConfig.color}`}>
+                                        {statusConfig.label}
+                                    </span>
+                                </div>
 
-                    {leads.length === 0 && (
-                        <div className="text-center py-12">
-                            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Leads gefunden</h3>
-                            <p className="mt-1 text-sm text-gray-500">Versuchen Sie es mit anderen Filtern oder</p>
-                            <div className="mt-6">
-                                <button
-                                    onClick={createTestLead}
-                                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                >
-                                    Test-Lead erstellen
-                                </button>
+                                {/* Contact Info */}
+                                <div className="space-y-2 mb-3">
+                                    {lead.email && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            <span className="truncate">{lead.email}</span>
+                                        </div>
+                                    )}
+                                    {lead.phone && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                            </svg>
+                                            <span>{lead.phone}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Notes Preview */}
+                                {lead.notes && (
+                                    <div className="text-xs text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3 line-clamp-2">
+                                        {lead.notes}
+                                    </div>
+                                )}
+
+                                {/* Footer */}
+                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                    {lead.form_name && (
+                                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded truncate max-w-[120px]">
+                                            {lead.form_name}
+                                        </span>
+                                    )}
+                                    {lead.assigned_to ? (
+                                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px]">
+                                                {lead.assignee_name?.charAt(0) || '?'}
+                                            </div>
+                                            <span className="truncate max-w-[80px]">{lead.assignee_name}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs text-gray-400">Nicht zugewiesen</span>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })}
                 </div>
             )}
 
@@ -317,6 +366,6 @@ export default function LeadsPage() {
                     }}
                 />
             )}
-        </>
+        </div>
     );
 }
