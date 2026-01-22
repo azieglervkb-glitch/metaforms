@@ -257,27 +257,44 @@ function LeadDetailModal({
     const handleAssign = async () => {
         if (!assignedTo) return;
         setAssigning(true);
+
+        const requestData = { leadId: lead.id, teamMemberId: assignedTo };
+        console.log('=== ASSIGN REQUEST ===');
+        console.log('URL: /api/leads/assign');
+        console.log('Data:', requestData);
+
         try {
             const res = await fetch('/api/leads/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
+                body: JSON.stringify(requestData),
             });
+
+            console.log('Response status:', res.status);
+            console.log('Response headers:', Object.fromEntries(res.headers.entries()));
 
             // Handle non-JSON responses
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
-                console.error('Non-JSON response:', res.status, res.statusText);
+                const textResponse = await res.text();
+                console.error('Non-JSON response:', res.status, res.statusText, textResponse);
                 alert(`Server-Fehler: ${res.status} ${res.statusText}`);
                 setAssigning(false);
                 return;
             }
 
             const data = await res.json();
+            console.log('Response data:', data);
+
             if (res.ok && data.success) {
+                console.log('=== ASSIGN SUCCESS ===');
                 alert(data.message || 'Lead erfolgreich zugewiesen!');
                 onUpdate();
             } else {
+                console.error('=== ASSIGN FAILED ===');
+                console.error('Status:', res.status);
+                console.error('Data:', data);
+
                 // Translate common API errors to German
                 const errorMessages: Record<string, string> = {
                     'Unauthorized': 'Nicht autorisiert. Bitte erneut anmelden.',
@@ -291,11 +308,11 @@ function LeadDetailModal({
                 };
                 const apiError = data.error || data.message || '';
                 const errorMsg = apiError ? (errorMessages[apiError] || apiError) : `Fehler (Status: ${res.status})`;
-                console.error('Assign error:', { status: res.status, data });
                 alert(errorMsg);
             }
         } catch (error) {
-            console.error('Error assigning:', error);
+            console.error('=== ASSIGN NETWORK ERROR ===');
+            console.error('Error:', error);
             alert('Netzwerkfehler beim Zuweisen. Bitte erneut versuchen.');
         }
         setAssigning(false);
