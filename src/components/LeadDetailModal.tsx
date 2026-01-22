@@ -73,21 +73,22 @@ export default function LeadDetailModal({
         if (!assignedTo) return;
         setAssigning(true);
         try {
-            const res = await fetch(`/api/leads/${lead.id}/assign`, {
+            const res = await fetch('/api/leads/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: assignedTo }),
+                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
             });
 
-            // Handle both 200/201 and potential error bodies
-            if (res.ok) {
-                alert('Mitarbeiter zugewiesen und benachrichtigt!');
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert(data.message || 'Lead erfolgreich zugewiesen!');
                 onUpdate();
             } else {
-                alert('Fehler beim Zuweisen');
+                alert(data.error || 'Fehler beim Zuweisen');
             }
         } catch (error) {
             console.error('Error assigning:', error);
+            alert('Netzwerkfehler beim Zuweisen');
         }
         setAssigning(false);
     };
