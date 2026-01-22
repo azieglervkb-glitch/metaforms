@@ -46,9 +46,11 @@ export async function GET(request: NextRequest) {
 
         // Build query
         let sql = `
-            SELECT l.*, u.full_name as assignee_name 
+            SELECT l.*,
+                   COALESCE(l.capi_sent_stages, '[]')::jsonb as capi_sent_stages,
+                   CONCAT(tm.first_name, ' ', tm.last_name) as assignee_name
             FROM leads l
-            LEFT JOIN users u ON l.assigned_to = u.id
+            LEFT JOIN team_members tm ON l.assigned_to = tm.id
             WHERE l.org_id = $1
         `;
         const params: (string | number)[] = [payload.orgId];

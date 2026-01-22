@@ -105,6 +105,7 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS form_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_id VARCHAR(255)`);
     await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS rated_via VARCHAR(50)`); // 'dashboard' or 'email'
+    await pool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS capi_sent_stages JSONB DEFAULT '[]'`); // Track which funnel stages were sent to Meta
 
     // Email rating tokens table
     await pool.query(`

@@ -11,6 +11,7 @@ interface Lead {
     status: string;
     quality_status: string;
     quality_feedback_sent: boolean;
+    capi_sent_stages: string[];
     created_at: string;
     notes: string;
     assigned_to: string | null;
@@ -36,7 +37,15 @@ const COLUMNS = [
     { id: 'interested', title: 'Interessiert', color: 'bg-purple-500', textColor: 'text-purple-700', bgLight: 'bg-purple-50', sendsCAPI: true },
     { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', textColor: 'text-indigo-700', bgLight: 'bg-indigo-50', sendsCAPI: true },
     { id: 'won', title: 'Gewonnen', color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50', sendsCAPI: true },
-    { id: 'lost', title: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50', sendsCAPI: false },
+    { id: 'lost', title: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50', sendsCAPI: true },
+];
+
+// Stages that can send CAPI signals
+const CAPI_STAGES = [
+    { id: 'interested', label: 'Interessiert', color: 'bg-purple-500', isPositive: true },
+    { id: 'meeting', label: 'Termin', color: 'bg-indigo-500', isPositive: true },
+    { id: 'won', label: 'Gewonnen', color: 'bg-green-500', isPositive: true },
+    { id: 'lost', label: 'Verloren', color: 'bg-red-500', isPositive: false },
 ];
 
 export default function KanbanPage() {
@@ -292,12 +301,12 @@ export default function KanbanPage() {
                                             )}
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200">
                                                 <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
-                                                {lead.quality_feedback_sent && (
-                                                    <span className="text-xs text-green-600 flex items-center gap-0.5">
+                                                {lead.capi_sent_stages && lead.capi_sent_stages.length > 0 && (
+                                                    <span className="text-xs text-green-600 flex items-center gap-0.5" title={lead.capi_sent_stages.join(', ')}>
                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                                         </svg>
-                                                        Signal
+                                                        {lead.capi_sent_stages.length}x
                                                     </span>
                                                 )}
                                             </div>
@@ -344,8 +353,9 @@ function LeadDetailModal({
     const [status, setStatus] = useState(lead.status);
     const [assignedTo, setAssignedTo] = useState(lead.assigned_to || '');
     const [saving, setSaving] = useState(false);
-    const [sending, setSending] = useState(false);
+    const [sendingStage, setSendingStage] = useState<string | null>(null);
     const [assigning, setAssigning] = useState(false);
+    const [sentStages, setSentStages] = useState<string[]>(lead.capi_sent_stages || []);
 
     const handleSave = async () => {
         setSaving(true);
@@ -387,25 +397,26 @@ function LeadDetailModal({
         setAssigning(false);
     };
 
-    const handleSendSignal = async () => {
-        setSending(true);
+    const handleSendStageSignal = async (stage: string) => {
+        setSendingStage(stage);
         try {
             const res = await fetch('/api/capi/send-event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId: lead.id }),
+                body: JSON.stringify({ leadId: lead.id, stage }),
             });
             const data = await res.json();
             if (data.success) {
-                alert('Signal erfolgreich an Meta gesendet!');
-                onUpdate();
+                setSentStages(data.sent_stages || [...sentStages, stage]);
+                alert(`Signal "${stage}" erfolgreich an Meta gesendet!`);
             } else {
                 alert(data.error || 'Fehler beim Senden');
             }
         } catch (error) {
             console.error('Error sending signal:', error);
+            alert('Netzwerkfehler beim Senden');
         }
-        setSending(false);
+        setSendingStage(null);
     };
 
     const statusOptions = [
@@ -525,15 +536,49 @@ function LeadDetailModal({
                         />
                     </div>
 
-                    {/* Signal Status */}
-                    {lead.quality_feedback_sent && (
-                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Qualitatssignal wurde bereits an Meta gesendet
+                    {/* Meta Signals Section */}
+                    <div>
+                        <label className="text-sm font-semibold text-gray-900 block mb-3">
+                            Meta Signale
+                            <span className="font-normal text-gray-500 ml-2">- Sende Feedback an Meta fur bessere Lead-Qualitat</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {CAPI_STAGES.map((stage) => {
+                                const isSent = sentStages.includes(stage.id);
+                                const isSending = sendingStage === stage.id;
+                                return (
+                                    <button
+                                        key={stage.id}
+                                        onClick={() => !isSent && handleSendStageSignal(stage.id)}
+                                        disabled={isSent || isSending}
+                                        className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                                            isSent
+                                                ? 'bg-gray-100 text-gray-400 cursor-default'
+                                                : stage.isPositive
+                                                    ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                                                    : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                                        }`}
+                                    >
+                                        {isSent ? (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        )}
+                                        {isSending ? 'Sendet...' : isSent ? `${stage.label} ✓` : stage.label}
+                                    </button>
+                                );
+                            })}
                         </div>
-                    )}
+                        {sentStages.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-2">
+                                Gesendet: {sentStages.map(s => CAPI_STAGES.find(c => c.id === s)?.label || s).join(', ')}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Modal Footer */}
@@ -552,18 +597,6 @@ function LeadDetailModal({
                         >
                             {saving ? 'Speichert...' : 'Speichern'}
                         </button>
-                        {(status === 'interested' || status === 'meeting' || status === 'won') && !lead.quality_feedback_sent && (
-                            <button
-                                onClick={handleSendSignal}
-                                disabled={sending}
-                                className="px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 disabled:opacity-50 transition-colors flex items-center gap-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                {sending ? 'Sendet...' : 'Signal'}
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
