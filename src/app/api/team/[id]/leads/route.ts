@@ -46,9 +46,9 @@ export async function GET(
 
         const { id: memberId } = await params;
 
-        // Verify team member belongs to this org
+        // Verify team member belongs to this org (team_members table, not users)
         const memberResult = await query<{ id: string }>(
-            'SELECT id FROM users WHERE id = $1 AND org_id = $2',
+            'SELECT id FROM team_members WHERE id = $1 AND org_id = $2',
             [memberId, payload.orgId]
         );
 
@@ -58,9 +58,9 @@ export async function GET(
 
         // Get all leads assigned to this team member
         const leads = await query<Lead>(
-            `SELECT l.*, u.full_name as assignee_name
+            `SELECT l.*, CONCAT(tm.first_name, ' ', tm.last_name) as assignee_name
              FROM leads l
-             LEFT JOIN users u ON l.assigned_to = u.id
+             LEFT JOIN team_members tm ON l.assigned_to = tm.id
              WHERE l.org_id = $1 AND l.assigned_to = $2
              ORDER BY l.created_at DESC`,
             [payload.orgId, memberId]
