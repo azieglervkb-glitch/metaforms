@@ -235,6 +235,12 @@ export default function KanbanPage() {
                                             onClick={() => setSelectedLead(lead)}
                                             className={`bg-gray-50 hover:bg-gray-100 rounded-lg p-3 cursor-pointer transition-all border border-transparent hover:border-gray-200 hover:shadow-sm ${dragging === lead.id ? 'opacity-50 scale-95' : ''}`}
                                         >
+                                            {/* Form Name Tag */}
+                                            {lead.form_name && (
+                                                <div className="text-[10px] font-medium text-[#0052FF] bg-[#0052FF]/10 px-1.5 py-0.5 rounded inline-block mb-1.5">
+                                                    {lead.form_name}
+                                                </div>
+                                            )}
                                             <div className="font-medium text-gray-900 text-sm mb-1">
                                                 {lead.full_name || lead.email || 'Unbekannt'}
                                             </div>
@@ -391,6 +397,11 @@ function LeadDetailModal({
                 <div className="p-6 border-b border-gray-100 bg-gray-50">
                     <div className="flex items-center justify-between">
                         <div>
+                            {lead.form_name && (
+                                <span className="text-xs font-medium text-[#0052FF] bg-[#0052FF]/10 px-2 py-1 rounded inline-block mb-2">
+                                    {lead.form_name}
+                                </span>
+                            )}
                             <h2 className="text-xl font-bold text-gray-900">{lead.full_name || 'Lead Details'}</h2>
                             <p className="text-sm text-gray-500 mt-0.5">Erstellt am {new Date(lead.created_at).toLocaleDateString('de-DE')}</p>
                         </div>

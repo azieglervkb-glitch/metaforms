@@ -285,6 +285,12 @@ export default function LeadsPage() {
                                 onClick={() => setSelectedLead(lead)}
                                 className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-lg hover:border-gray-300 transition-all"
                             >
+                                {/* Form Name Tag */}
+                                {lead.form_name && (
+                                    <div className="text-[10px] font-medium text-[#0052FF] bg-[#0052FF]/10 px-1.5 py-0.5 rounded inline-block mb-2">
+                                        {lead.form_name}
+                                    </div>
+                                )}
                                 {/* Header */}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-3">
@@ -332,11 +338,6 @@ export default function LeadsPage() {
 
                                 {/* Footer */}
                                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    {lead.form_name && (
-                                        <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded truncate max-w-[120px]">
-                                            {lead.form_name}
-                                        </span>
-                                    )}
                                     {lead.assigned_to ? (
                                         <div className="flex items-center gap-1 text-xs text-gray-500">
                                             <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px]">
