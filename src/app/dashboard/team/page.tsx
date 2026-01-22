@@ -50,6 +50,7 @@ export default function TeamPage() {
     const [memberLeads, setMemberLeads] = useState<Lead[]>([]);
     const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null);
     const [loadingMemberData, setLoadingMemberData] = useState(false);
+    const [memberFormFilter, setMemberFormFilter] = useState<string>('');
 
     useEffect(() => {
         fetchMembers();
@@ -89,7 +90,21 @@ export default function TeamPage() {
         setSelectedMember(null);
         setMemberLeads([]);
         setMemberAnalytics(null);
+        setMemberFormFilter('');
     };
+
+    // Get unique forms from member leads
+    const memberForms = memberLeads.reduce((acc, lead) => {
+        if (lead.form_name && !acc.find(f => f.name === lead.form_name)) {
+            acc.push({ name: lead.form_name });
+        }
+        return acc;
+    }, [] as { name: string }[]);
+
+    // Filter member leads by form
+    const filteredMemberLeads = memberFormFilter
+        ? memberLeads.filter(lead => lead.form_name === memberFormFilter)
+        : memberLeads;
 
     const handleAddMember = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -436,8 +451,24 @@ export default function TeamPage() {
 
                                     {/* Leads Table */}
                                     <div>
-                                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Zugewiesene Leads</h3>
-                                        {memberLeads.length === 0 ? (
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Zugewiesene Leads</h3>
+                                            {memberForms.length > 1 && (
+                                                <select
+                                                    value={memberFormFilter}
+                                                    onChange={(e) => setMemberFormFilter(e.target.value)}
+                                                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none bg-white"
+                                                >
+                                                    <option value="">Alle Formulare</option>
+                                                    {memberForms.map((form) => (
+                                                        <option key={form.name} value={form.name}>
+                                                            {form.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+                                        {filteredMemberLeads.length === 0 ? (
                                             <div className="bg-gray-50 rounded-lg p-8 text-center">
                                                 <p className="text-gray-500">Noch keine Leads zugewiesen</p>
                                             </div>
@@ -454,7 +485,7 @@ export default function TeamPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100">
-                                                        {memberLeads.map((lead) => (
+                                                        {filteredMemberLeads.map((lead) => (
                                                             <tr key={lead.id} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-3">
                                                                     <p className="font-medium text-gray-900">{lead.full_name || '-'}</p>

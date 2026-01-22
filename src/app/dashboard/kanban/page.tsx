@@ -25,6 +25,11 @@ interface TeamMember {
     email: string;
 }
 
+interface FormOption {
+    form_id: string;
+    form_name: string;
+}
+
 const COLUMNS = [
     { id: 'new', title: 'Neu', color: 'bg-amber-500', textColor: 'text-amber-700', bgLight: 'bg-amber-50', sendsCAPI: false },
     { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', textColor: 'text-blue-700', bgLight: 'bg-blue-50', sendsCAPI: false },
@@ -37,13 +42,15 @@ const COLUMNS = [
 export default function KanbanPage() {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [forms, setForms] = useState<FormOption[]>([]);
+    const [formFilter, setFormFilter] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [dragging, setDragging] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [formFilter]);
 
     const fetchData = async () => {
         await Promise.all([fetchLeads(), fetchTeam()]);
@@ -52,9 +59,14 @@ export default function KanbanPage() {
 
     const fetchLeads = async () => {
         try {
-            const res = await fetch('/api/leads');
+            let url = '/api/leads';
+            if (formFilter) {
+                url += `?form_id=${formFilter}`;
+            }
+            const res = await fetch(url);
             const data = await res.json();
             setLeads(data.leads || []);
+            setForms(data.forms || []);
         } catch (error) {
             console.error('Error fetching leads:', error);
         }
@@ -135,15 +147,30 @@ export default function KanbanPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
                     <p className="text-gray-500 text-sm mt-1">Ziehe Leads durch die Pipeline - qualifizierte Leads trainieren Meta</p>
                 </div>
-                <button
-                    onClick={() => fetchData()}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Aktualisieren
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* Form Filter */}
+                    <select
+                        value={formFilter}
+                        onChange={(e) => setFormFilter(e.target.value)}
+                        className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none bg-white"
+                    >
+                        <option value="">Alle Formulare</option>
+                        {forms.map((form) => (
+                            <option key={form.form_id} value={form.form_id}>
+                                {form.form_name}
+                            </option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={() => fetchData()}
+                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Aktualisieren
+                    </button>
+                </div>
             </div>
 
             {/* Stats */}
