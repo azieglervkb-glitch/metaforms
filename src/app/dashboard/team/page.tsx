@@ -210,14 +210,14 @@ export default function TeamPage() {
     const totalQualified = members.reduce((sum, m) => sum + parseInt(m.qualified_leads || '0'), 0);
     const totalUnqualified = members.reduce((sum, m) => sum + parseInt(m.unqualified_leads || '0'), 0);
 
-    // Status configuration for kanban
+    // Status configuration for kanban - simplified
     const statusConfig = [
-        { key: 'new', label: 'Neu', color: 'bg-blue-500' },
-        { key: 'contacted', label: 'Kontaktiert', color: 'bg-yellow-500' },
-        { key: 'qualified', label: 'Qualifiziert', color: 'bg-purple-500' },
-        { key: 'proposal', label: 'Angebot', color: 'bg-orange-500' },
-        { key: 'won', label: 'Gewonnen', color: 'bg-green-500' },
-        { key: 'lost', label: 'Verloren', color: 'bg-red-500' },
+        { key: 'new', label: 'Neu' },
+        { key: 'contacted', label: 'Kontaktiert' },
+        { key: 'qualified', label: 'Qualifiziert' },
+        { key: 'proposal', label: 'Angebot' },
+        { key: 'won', label: 'Gewonnen' },
+        { key: 'lost', label: 'Verloren' },
     ];
 
     const getLeadsByStatus = (status: string) => memberLeads.filter(l => l.status === status);
@@ -409,132 +409,89 @@ export default function TeamPage() {
                         <div className="flex-1 overflow-y-auto p-6">
                             {loadingMemberData ? (
                                 <div className="flex items-center justify-center py-12">
-                                    <div className="w-6 h-6 border-2 border-[#0052FF] border-t-transparent rounded-full animate-spin"></div>
+                                    <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                                     <span className="ml-3 text-gray-500">Lade Daten...</span>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    {/* Analytics Stats */}
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance-Ubersicht</h3>
-                                        <div className="grid grid-cols-6 gap-3">
-                                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                                <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.total || 0}</p>
-                                                <p className="text-xs text-gray-500 mt-1">Gesamt</p>
-                                            </div>
-                                            {statusConfig.map((status) => (
-                                                <div key={status.key} className="bg-gray-50 rounded-xl p-4 text-center">
-                                                    <p className="text-2xl font-bold text-gray-900">
-                                                        {memberAnalytics?.byStatus[status.key] || 0}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500 mt-1">{status.label}</p>
-                                                </div>
-                                            ))}
+                                    {/* Stats Row - Simple */}
+                                    <div className="grid grid-cols-4 gap-4">
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-500">Gesamt</p>
+                                            <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.total || 0}</p>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-500">Ausstehend</p>
+                                            <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.byQuality['pending'] || 0}</p>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-500">Qualifiziert</p>
+                                            <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.byQuality['qualified'] || 0}</p>
+                                        </div>
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-500">Nicht qualifiziert</p>
+                                            <p className="text-2xl font-bold text-gray-900">{memberAnalytics?.byQuality['unqualified'] || 0}</p>
                                         </div>
                                     </div>
 
-                                    {/* Quality Stats */}
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <p className="text-2xl font-bold text-amber-700">{memberAnalytics?.byQuality['pending'] || 0}</p>
-                                                    <p className="text-sm text-amber-600">Ausstehend</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <p className="text-2xl font-bold text-green-700">{memberAnalytics?.byQuality['qualified'] || 0}</p>
-                                                    <p className="text-sm text-green-600">Qualifiziert</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-red-50 rounded-xl p-4 border border-red-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                                                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <p className="text-2xl font-bold text-red-700">{memberAnalytics?.byQuality['unqualified'] || 0}</p>
-                                                    <p className="text-sm text-red-600">Nicht qualifiziert</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Kanban Board */}
+                                    {/* Leads Table */}
                                     <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Zugewiesene Leads</h3>
+                                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Zugewiesene Leads</h3>
                                         {memberLeads.length === 0 ? (
-                                            <div className="bg-gray-50 rounded-xl p-8 text-center">
-                                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                                    </svg>
-                                                </div>
+                                            <div className="bg-gray-50 rounded-lg p-8 text-center">
                                                 <p className="text-gray-500">Noch keine Leads zugewiesen</p>
                                             </div>
                                         ) : (
-                                            <div className="grid grid-cols-6 gap-3">
-                                                {statusConfig.map((status) => {
-                                                    const leads = getLeadsByStatus(status.key);
-                                                    return (
-                                                        <div key={status.key} className="bg-gray-50 rounded-xl overflow-hidden">
-                                                            {/* Column Header */}
-                                                            <div className={`px-3 py-2 ${status.color}`}>
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-white text-sm font-medium">{status.label}</span>
-                                                                    <span className="text-white/80 text-xs bg-white/20 px-1.5 py-0.5 rounded">
-                                                                        {leads.length}
+                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full">
+                                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                                        <tr>
+                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Name</th>
+                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Formular</th>
+                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Qualitat</th>
+                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Datum</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                        {memberLeads.map((lead) => (
+                                                            <tr key={lead.id} className="hover:bg-gray-50">
+                                                                <td className="px-4 py-3">
+                                                                    <p className="font-medium text-gray-900">{lead.full_name || '-'}</p>
+                                                                    <p className="text-sm text-gray-500">{lead.email}</p>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-600">
+                                                                    {lead.form_name || '-'}
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="text-sm text-gray-700">
+                                                                        {statusConfig.find(s => s.key === lead.status)?.label || lead.status}
                                                                     </span>
-                                                                </div>
-                                                            </div>
-                                                            {/* Leads */}
-                                                            <div className="p-2 space-y-2 max-h-[300px] overflow-y-auto">
-                                                                {leads.length === 0 ? (
-                                                                    <p className="text-xs text-gray-400 text-center py-4">Keine Leads</p>
-                                                                ) : (
-                                                                    leads.map((lead) => (
-                                                                        <div
-                                                                            key={lead.id}
-                                                                            className="bg-white rounded-lg p-2.5 border border-gray-200 hover:shadow-sm transition-shadow"
-                                                                        >
-                                                                            <p className="font-medium text-gray-900 text-sm truncate">
-                                                                                {lead.full_name || lead.email}
-                                                                            </p>
-                                                                            {lead.form_name && (
-                                                                                <p className="text-xs text-gray-500 truncate mt-0.5">{lead.form_name}</p>
-                                                                            )}
-                                                                            <div className="flex items-center justify-between mt-2">
-                                                                                <span className="text-xs text-gray-400">{formatDate(lead.created_at)}</span>
-                                                                                {lead.quality_status === 'qualified' && (
-                                                                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                                                )}
-                                                                                {lead.quality_status === 'unqualified' && (
-                                                                                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    {lead.quality_status === 'qualified' && (
+                                                                        <span className="inline-flex items-center gap-1 text-sm text-green-700">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                                            Gut
+                                                                        </span>
+                                                                    )}
+                                                                    {lead.quality_status === 'unqualified' && (
+                                                                        <span className="inline-flex items-center gap-1 text-sm text-red-700">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                                                            Schlecht
+                                                                        </span>
+                                                                    )}
+                                                                    {lead.quality_status === 'pending' && (
+                                                                        <span className="text-sm text-gray-400">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-sm text-gray-500">
+                                                                    {formatDate(lead.created_at)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             </div>
                                         )}
                                     </div>
