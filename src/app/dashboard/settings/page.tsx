@@ -15,7 +15,7 @@ export default function SettingsPage() {
     const [connection, setConnection] = useState<MetaConnection>({ connected: false });
     const [loading, setLoading] = useState(true);
     const [webhookUrl, setWebhookUrl] = useState('');
-    const [activeTab, setActiveTab] = useState<'general' | 'email'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'email' | 'meta-guide'>('general');
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -88,6 +88,19 @@ export default function SettingsPage() {
                     }`}
                 >
                     E-Mail Template
+                </button>
+                <button
+                    onClick={() => setActiveTab('meta-guide')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        activeTab === 'meta-guide'
+                            ? 'bg-[#0052FF] text-white'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Meta Setup Guide
                 </button>
             </div>
 
@@ -314,11 +327,14 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </>
-            ) : (
+            ) : activeTab === 'email' ? (
                 /* Email Template Tab */
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <EmailTemplateEditor />
                 </div>
+            ) : (
+                /* Meta Setup Guide Tab */
+                <MetaSetupGuide />
             )}
         </div>
     );
@@ -373,5 +389,461 @@ function PushNotificationToggle() {
         >
             Aktivieren
         </button>
+    );
+}
+
+function MetaSetupGuide() {
+    const [expandedStep, setExpandedStep] = useState<number | null>(1);
+
+    const steps = [
+        {
+            number: 1,
+            title: 'Verbinde Meta mit outrnk Leads',
+            subtitle: 'Bereits erledigt wenn du verbunden bist',
+            icon: (
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Gehe zum Tab <span className="font-semibold text-gray-900">"Allgemein"</span> und klicke auf <span className="font-semibold text-[#0052FF]">"Mit Meta verbinden"</span>.
+                    </p>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div>
+                                <p className="font-medium text-amber-800">Wichtig</p>
+                                <p className="text-sm text-amber-700">Du brauchst Admin-Zugriff auf dein Meta Business Manager Konto.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            number: 2,
+            title: 'Sende Signale an Meta',
+            subtitle: 'Uber das Kanban-Board',
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Wenn du einen Lead im Kanban-Board offnest, siehst du den Bereich <span className="font-semibold text-gray-900">"Meta Signale"</span>.
+                    </p>
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                        <p className="text-sm font-medium text-gray-700">Verfugbare Signale:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                Interessiert
+                            </div>
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                Termin
+                            </div>
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                Gewonnen
+                            </div>
+                            <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm">
+                                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                Verloren
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <p className="font-medium text-blue-800">Tipp</p>
+                                <p className="text-sm text-blue-700">Du kannst mehrere Signale pro Lead senden - z.B. erst "Interessiert", dann spater "Gewonnen".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            number: 3,
+            title: 'Warte 7 Tage',
+            subtitle: 'Meta sammelt Daten',
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Meta braucht <span className="font-semibold text-gray-900">mindestens 7 Tage</span> Daten bevor du den Sales Funnel konfigurieren kannst.
+                    </p>
+                    <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-[#0052FF]/10 flex items-center justify-center">
+                                <span className="text-[#0052FF] font-bold text-lg">7+</span>
+                            </div>
+                            <div>
+                                <p className="font-medium text-gray-900">Mindestanforderungen</p>
+                                <p className="text-sm text-gray-500">50+ Events taglich uber min. 2 Stufen fur 7 Tage</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div>
+                                <p className="font-medium text-amber-800">Wichtig</p>
+                                <p className="text-sm text-amber-700">Du brauchst ca. 200+ Leads pro Monat fur Conversion Leads Optimierung.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            number: 4,
+            title: 'Konfiguriere den Sales Funnel in Meta',
+            subtitle: 'Im Events Manager',
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <p className="font-medium text-gray-900">Schritt-fur-Schritt Anleitung</p>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#0052FF] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Offne Meta Events Manager</p>
+                                    <p className="text-sm text-gray-500">business.facebook.com → Events Manager</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#0052FF] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Wahle deine Datenquelle (Pixel)</p>
+                                    <p className="text-sm text-gray-500">Die CRM-Verbindung die du mit outrnk Leads nutzt</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#0052FF] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">3</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Gehe zu "Einstellungen" (Settings)</p>
+                                    <p className="text-sm text-gray-500">Klicke auf "Sales Funnel konfigurieren"</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-[#0052FF] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">4</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Ordne die Stufen per Drag & Drop</p>
+                                    <p className="text-sm text-gray-500">Wichtigste (Gewonnen) oben, unwichtigste unten</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl p-4">
+                        <p className="font-medium text-gray-900 mb-3">Empfohlene Funnel-Reihenfolge:</p>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">🥇</span>
+                                <div className="flex-1 bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm font-medium">
+                                    Gewonnen (won) - Hochste Prioritat
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">🥈</span>
+                                <div className="flex-1 bg-indigo-100 text-indigo-800 px-3 py-2 rounded-lg text-sm font-medium">
+                                    Termin (meeting)
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">🥉</span>
+                                <div className="flex-1 bg-purple-100 text-purple-800 px-3 py-2 rounded-lg text-sm font-medium">
+                                    Interessiert (interested)
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">❌</span>
+                                <div className="flex-1 bg-red-100 text-red-800 px-3 py-2 rounded-lg text-sm font-medium">
+                                    Verloren (lost) - Negatives Signal
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            number: 5,
+            title: 'Wahle das Optimierungsziel',
+            subtitle: 'Fur welche Stufe Meta optimieren soll',
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Unter <span className="font-semibold text-gray-900">"Optimierungsziel"</span> wahlst du aus, fur welche Stufe Meta deine Ads optimieren soll.
+                    </p>
+
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                                <p className="font-medium text-green-800">Empfehlung</p>
+                                <p className="text-sm text-green-700">Wahle die Stufe mit einer <span className="font-semibold">1-40% Conversion Rate</span>. Meistens ist das "Gewonnen" oder "Termin".</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4">
+                        <p className="text-sm text-gray-600">
+                            <span className="font-semibold text-gray-900">Seit September 2025:</span> Du kannst das Optimierungsziel auch direkt beim Erstellen einer Ad Set wahlen - die Funnel-Konfiguration im Events Manager ist dann optional.
+                        </p>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            number: 6,
+            title: 'Erstelle eine optimierte Kampagne',
+            subtitle: 'Im Ads Manager',
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg>
+            ),
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Wenn du eine neue Lead-Kampagne erstellst, wahle diese Einstellungen:
+                    </p>
+
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <table className="w-full text-sm">
+                            <tbody className="divide-y divide-gray-100">
+                                <tr>
+                                    <td className="px-4 py-3 bg-gray-50 font-medium text-gray-700 w-1/3">Conversion Location</td>
+                                    <td className="px-4 py-3 text-gray-900">Instant Forms</td>
+                                </tr>
+                                <tr>
+                                    <td className="px-4 py-3 bg-gray-50 font-medium text-gray-700">Performance Goal</td>
+                                    <td className="px-4 py-3 text-gray-900">Maximise number of <span className="text-[#0052FF] font-semibold">conversion leads</span></td>
+                                </tr>
+                                <tr>
+                                    <td className="px-4 py-3 bg-gray-50 font-medium text-gray-700">Dataset</td>
+                                    <td className="px-4 py-3 text-gray-900">[Dein Page Name] Event Data</td>
+                                </tr>
+                                <tr>
+                                    <td className="px-4 py-3 bg-gray-50 font-medium text-gray-700">Conversion Event</td>
+                                    <td className="px-4 py-3 text-gray-900">Deine gewunschte Stufe (z.B. "won")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="bg-[#0052FF]/5 border border-[#0052FF]/20 rounded-lg p-4">
+                        <div className="flex gap-3">
+                            <svg className="w-5 h-5 text-[#0052FF] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                            <div>
+                                <p className="font-medium text-[#0052FF]">Ergebnis</p>
+                                <p className="text-sm text-gray-700">Meta findet jetzt Personen die eher zu "Gewonnen" konvertieren - nicht nur Formular-Ausfuller!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <div className="space-y-6">
+            {/* Header Card */}
+            <div className="bg-gradient-to-r from-[#0052FF] to-[#0047E1] rounded-2xl p-6 text-white">
+                <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold mb-1">Meta Conversion Leads Optimierung</h2>
+                        <p className="text-white/80 text-sm">
+                            Lerne wie du Meta beibringst, bessere Leads zu finden - basierend auf deinen echten Verkaufen.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* What is it? */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Was ist Conversion Leads Optimierung?</h3>
+                <p className="text-gray-600 mb-4">
+                    Normalerweise optimiert Meta nur darauf, dass Leute dein Formular ausfullen. Mit <span className="font-semibold text-gray-900">Conversion Leads</span> sagst du Meta welche dieser Leads wirklich zu Kunden wurden - und Meta lernt daraus.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                        <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span className="font-medium text-red-800">Ohne Conversion Leads</span>
+                        </div>
+                        <p className="text-sm text-red-700">Meta optimiert fur Formular-Ausfuller - egal ob sie kaufen oder nicht</p>
+                    </div>
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                        <div className="flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="font-medium text-green-800">Mit Conversion Leads</span>
+                        </div>
+                        <p className="text-sm text-green-700">Meta optimiert fur echte Kaufer - bis zu 15% niedrigere Kosten pro qualifiziertem Lead</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Prerequisites */}
+            <div className="bg-amber-50 rounded-xl border border-amber-200 p-6">
+                <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Voraussetzungen
+                </h3>
+                <ul className="space-y-2 text-sm text-amber-800">
+                    <li className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                        </svg>
+                        Meta Business Account mit Admin-Zugriff
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                        </svg>
+                        Mindestens 200+ Leads pro Monat
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                        </svg>
+                        Aktive Facebook Lead Ads Kampagnen
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" />
+                        </svg>
+                        Lead-Stufe mit 1-40% Conversion Rate
+                    </li>
+                </ul>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-3">
+                {steps.map((step) => (
+                    <div
+                        key={step.number}
+                        className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                    >
+                        <button
+                            onClick={() => setExpandedStep(expandedStep === step.number ? null : step.number)}
+                            className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                expandedStep === step.number ? 'bg-[#0052FF] text-white' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                                {step.icon}
+                            </div>
+                            <div className="flex-1 text-left">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-[#0052FF]">SCHRITT {step.number}</span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900">{step.title}</h4>
+                                <p className="text-sm text-gray-500">{step.subtitle}</p>
+                            </div>
+                            <svg
+                                className={`w-5 h-5 text-gray-400 transition-transform ${expandedStep === step.number ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        {expandedStep === step.number && (
+                            <div className="px-6 pb-6 pt-2 border-t border-gray-100">
+                                {step.content}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Help Links */}
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Weitere Hilfe</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <a
+                        href="https://www.facebook.com/business/help/331612538028890"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-[#0052FF] hover:shadow-md transition-all"
+                    >
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.09 0 2.23.19 2.23.19v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-medium text-gray-900">Meta Help Center</p>
+                            <p className="text-xs text-gray-500">Offizielle Dokumentation</p>
+                        </div>
+                    </a>
+                    <a
+                        href="https://help.privyr.com/knowledge-base/meta-conversions-api/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-[#0052FF] hover:shadow-md transition-all"
+                    >
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-medium text-gray-900">Ausfuhrlicher Guide</p>
+                            <p className="text-xs text-gray-500">Mit Screenshots</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
     );
 }
