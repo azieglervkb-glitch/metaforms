@@ -14,20 +14,42 @@ interface TemplateData {
     is_active: boolean;
 }
 
-// Sample data for preview
-const PREVIEW_DATA: Record<string, string> = {
-    '{{assignee_name}}': 'Max Mustermann',
-    '{{lead_name}}': 'Erika Beispiel',
-    '{{lead_email}}': 'erika@beispiel.de',
-    '{{lead_phone}}': '+49 123 456789',
-    '{{form_name}}': 'Kontaktformular Website',
-    '{{qualified_url}}': '#',
-    '{{unqualified_url}}': '#',
-    '{{dashboard_url}}': '#',
-    '{{portal_url}}': '#',
+type TemplateType = 'lead_assignment' | 'team_member_welcome';
+
+// Template type configurations
+const TEMPLATE_TYPE_CONFIG: Record<TemplateType, {
+    label: string;
+    description: string;
+    previewData: Record<string, string>;
+}> = {
+    lead_assignment: {
+        label: 'Lead-Zuweisung',
+        description: 'E-Mail an Team-Mitglieder wenn ein Lead zugewiesen wird',
+        previewData: {
+            '{{assignee_name}}': 'Max Mustermann',
+            '{{lead_name}}': 'Erika Beispiel',
+            '{{lead_email}}': 'erika@beispiel.de',
+            '{{lead_phone}}': '+49 123 456789',
+            '{{form_name}}': 'Kontaktformular Website',
+            '{{qualified_url}}': '#',
+            '{{unqualified_url}}': '#',
+            '{{dashboard_url}}': '#',
+            '{{portal_url}}': '#',
+        },
+    },
+    team_member_welcome: {
+        label: 'Willkommens-E-Mail',
+        description: 'E-Mail an neue Team-Mitglieder mit Portal-Zugang',
+        previewData: {
+            '{{member_name}}': 'Max Mustermann',
+            '{{member_email}}': 'max@firma.de',
+            '{{portal_url}}': '#',
+        },
+    },
 };
 
 export default function EmailTemplateEditor() {
+    const [templateType, setTemplateType] = useState<TemplateType>('lead_assignment');
     const [template, setTemplate] = useState<TemplateData | null>(null);
     const [variables, setVariables] = useState<TemplateVariable[]>([]);
     const [subject, setSubject] = useState('');
@@ -37,14 +59,15 @@ export default function EmailTemplateEditor() {
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
 
-    // Load template
+    // Load template when type changes
     useEffect(() => {
         fetchTemplate();
-    }, []);
+    }, [templateType]);
 
     const fetchTemplate = async () => {
+        setLoading(true);
         try {
-            const res = await fetch('/api/settings/email-template');
+            const res = await fetch(`/api/settings/email-template?type=${templateType}`);
             const data = await res.json();
 
             if (data.template) {
@@ -68,7 +91,11 @@ export default function EmailTemplateEditor() {
             const res = await fetch('/api/settings/email-template', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subject, html_content: htmlContent }),
+                body: JSON.stringify({
+                    subject,
+                    html_content: htmlContent,
+                    template_type: templateType,
+                }),
             });
 
             if (res.ok) {
@@ -92,7 +119,7 @@ export default function EmailTemplateEditor() {
         }
 
         try {
-            const res = await fetch('/api/settings/email-template', {
+            const res = await fetch(`/api/settings/email-template?type=${templateType}`, {
                 method: 'DELETE',
             });
 
@@ -130,20 +157,22 @@ export default function EmailTemplateEditor() {
     // Generate preview HTML
     const getPreviewHtml = useCallback(() => {
         let preview = htmlContent;
-        Object.entries(PREVIEW_DATA).forEach(([key, value]) => {
+        const previewData = TEMPLATE_TYPE_CONFIG[templateType].previewData;
+        Object.entries(previewData).forEach(([key, value]) => {
             preview = preview.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
         });
         return preview;
-    }, [htmlContent]);
+    }, [htmlContent, templateType]);
 
     // Generate preview subject
     const getPreviewSubject = useCallback(() => {
         let preview = subject;
-        Object.entries(PREVIEW_DATA).forEach(([key, value]) => {
+        const previewData = TEMPLATE_TYPE_CONFIG[templateType].previewData;
+        Object.entries(previewData).forEach(([key, value]) => {
             preview = preview.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
         });
         return preview;
-    }, [subject]);
+    }, [subject, templateType]);
 
     if (loading) {
         return (
@@ -163,7 +192,7 @@ export default function EmailTemplateEditor() {
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">E-Mail Template Editor</h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Passe die E-Mail an, die an Team-Mitglieder gesendet wird, wenn ein Lead zugewiesen wird.
+                        Passe die E-Mails an, die an Team-Mitglieder gesendet werden.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -173,6 +202,41 @@ export default function EmailTemplateEditor() {
                         </span>
                     )}
                 </div>
+            </div>
+
+            {/* Template Type Selector */}
+            <div className="bg-gray-50 rounded-xl p-1 inline-flex gap-1">
+                {(Object.keys(TEMPLATE_TYPE_CONFIG) as TemplateType[]).map((type) => (
+                    <button
+                        key={type}
+                        onClick={() => setTemplateType(type)}
+                        className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                            templateType === type
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            {type === 'lead_assignment' ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            )}
+                            {TEMPLATE_TYPE_CONFIG[type].label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Template Description */}
+            <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                <p className="text-sm text-blue-700">
+                    {TEMPLATE_TYPE_CONFIG[templateType].description}
+                </p>
             </div>
 
             {/* Variables Reference */}
@@ -203,7 +267,7 @@ export default function EmailTemplateEditor() {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono text-sm"
-                    placeholder="Neuer Lead: {{lead_name}}"
+                    placeholder="Betreff..."
                 />
             </div>
 
