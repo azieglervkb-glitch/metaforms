@@ -322,18 +322,6 @@ const DEFAULT_TEAM_WELCOME_TEMPLATE = {
 </html>`,
 };
 
-// Template configurations
-const TEMPLATE_CONFIGS: Record<string, { defaultTemplate: typeof DEFAULT_LEAD_ASSIGNMENT_TEMPLATE; variables: typeof LEAD_ASSIGNMENT_VARIABLES }> = {
-    lead_assignment: {
-        defaultTemplate: DEFAULT_LEAD_ASSIGNMENT_TEMPLATE,
-        variables: LEAD_ASSIGNMENT_VARIABLES,
-    },
-    team_member_welcome: {
-        defaultTemplate: DEFAULT_TEAM_WELCOME_TEMPLATE,
-        variables: TEAM_WELCOME_VARIABLES,
-    },
-};
-
 // Available template variables for lead assignment
 const LEAD_ASSIGNMENT_VARIABLES = [
     { key: '{{assignee_name}}', description: 'Name des Empfängers' },
@@ -353,6 +341,18 @@ const TEAM_WELCOME_VARIABLES = [
     { key: '{{member_email}}', description: 'E-Mail des Team-Mitglieds' },
     { key: '{{portal_url}}', description: 'Link zum persönlichen Portal' },
 ];
+
+// Template configurations
+const TEMPLATE_CONFIGS: Record<string, { defaultTemplate: typeof DEFAULT_LEAD_ASSIGNMENT_TEMPLATE; variables: typeof LEAD_ASSIGNMENT_VARIABLES }> = {
+    lead_assignment: {
+        defaultTemplate: DEFAULT_LEAD_ASSIGNMENT_TEMPLATE,
+        variables: LEAD_ASSIGNMENT_VARIABLES,
+    },
+    team_member_welcome: {
+        defaultTemplate: DEFAULT_TEAM_WELCOME_TEMPLATE,
+        variables: TEAM_WELCOME_VARIABLES,
+    },
+};
 
 // Export for backward compatibility
 export const TEMPLATE_VARIABLES = LEAD_ASSIGNMENT_VARIABLES;
