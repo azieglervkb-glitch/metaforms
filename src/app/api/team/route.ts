@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { sendTeamMemberWelcomeEmail } from '@/lib/email';
 
 interface TeamMember {
     id: string;
@@ -101,6 +102,22 @@ export async function POST(request: NextRequest) {
        RETURNING id, first_name, last_name, email, created_at`,
             [payload.orgId, firstName, lastName, email]
         );
+
+        // Send welcome email with portal link
+        if (member) {
+            try {
+                await sendTeamMemberWelcomeEmail({
+                    to: email,
+                    memberName: `${firstName} ${lastName}`,
+                    memberEmail: email,
+                    teamMemberId: member.id,
+                    orgId: payload.orgId,
+                });
+            } catch (emailError) {
+                console.error('Failed to send welcome email:', emailError);
+                // Continue anyway - member was created successfully
+            }
+        }
 
         return NextResponse.json({ success: true, member });
     } catch (error) {

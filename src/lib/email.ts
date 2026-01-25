@@ -420,3 +420,197 @@ export async function sendNewLeadNotification(adminEmail: string, lead: LeadInfo
     return { success: false, error };
   }
 }
+
+// Default template for team member welcome emails - Outrnk UI Style (Light + Blue)
+const DEFAULT_TEAM_WELCOME_TEMPLATE: EmailTemplate = {
+  subject: 'Willkommen bei outrnk Leads!',
+  html_content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+
+          <!-- Header with Logo -->
+          <tr>
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e5e7eb;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">.</span></span>
+                    <span style="color: #d1d5db; margin: 0 8px;">|</span>
+                    <span style="color: #6b7280; font-size: 14px;">Leads</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Welcome Badge + Name -->
+          <tr>
+            <td style="padding: 24px 32px 16px;">
+              <span style="display: inline-block; padding: 4px 10px; background-color: #dcfce7; border-radius: 4px; color: #166534; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Willkommen</span>
+              <h1 style="margin: 12px 0 0; color: #111827; font-size: 22px; font-weight: 600; line-height: 1.3;">Hallo {{member_name}}!</h1>
+            </td>
+          </tr>
+
+          <!-- Welcome Message -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
+                Du wurdest als Team-Mitglied hinzugefügt. Ab jetzt kannst du Leads über dein persönliches Portal einsehen und verwalten.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Account Details Card -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">Name</span>
+                          <span style="color: #111827; font-size: 14px; font-weight: 500;">{{member_name}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb;">
+                          <span style="color: #9ca3af; font-size: 12px; display: block; margin-bottom: 2px;">E-Mail</span>
+                          <span style="color: #111827; font-size: 14px;">{{member_email}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Portal Link -->
+          <tr>
+            <td style="padding: 0 32px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="margin: 0 0 12px; color: #1e40af; font-size: 14px; font-weight: 500;">
+                      Dein persönliches Lead-Portal
+                    </p>
+                    <p style="margin: 0 0 16px; color: #6b7280; font-size: 13px; line-height: 1.5;">
+                      Über diesen Link erreichst du jederzeit deine zugewiesenen Leads. Speichere den Link in deinen Lesezeichen.
+                    </p>
+                    <a href="{{portal_url}}" style="display: inline-block; padding: 12px 24px; background-color: #0052FF; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">
+                      Portal öffnen
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center; line-height: 1.6;">
+                Automatisch gesendet von outrnk. Leads<br>
+                Bewahre diesen Link sicher auf
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+};
+
+interface TeamMemberWelcomeEmailParams {
+  to: string;
+  memberName: string;
+  memberEmail: string;
+  teamMemberId: string;
+  orgId: string;
+}
+
+/**
+ * Get custom team welcome email template for organization or return default
+ */
+async function getTeamWelcomeTemplate(orgId: string): Promise<EmailTemplate> {
+  try {
+    const template = await queryOne<EmailTemplate>(
+      `SELECT subject, html_content FROM email_templates
+       WHERE org_id = $1 AND template_type = 'team_member_welcome' AND is_active = true`,
+      [orgId]
+    );
+    return template || DEFAULT_TEAM_WELCOME_TEMPLATE;
+  } catch {
+    return DEFAULT_TEAM_WELCOME_TEMPLATE;
+  }
+}
+
+/**
+ * Send welcome email to new team member with portal link
+ */
+export async function sendTeamMemberWelcomeEmail(params: TeamMemberWelcomeEmailParams) {
+  const appUrl = await getAppUrl();
+
+  // Get or create portal token for team member
+  const portalToken = await getOrCreatePortalToken(params.teamMemberId, params.orgId);
+  const portalUrl = portalToken ? `${appUrl}/portal/${portalToken}` : `${appUrl}/dashboard/kanban`;
+
+  if (!process.env.RESEND_API_KEY) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV] Welcome email skipped - RESEND_API_KEY not configured');
+      console.log('[DEV] Would send to:', params.to);
+      console.log('[DEV] Portal URL:', portalUrl);
+    }
+    return { success: true, dev: true };
+  }
+
+  try {
+    const resend = getResend();
+    if (!resend) {
+      return { success: false, error: 'Resend not configured' };
+    }
+
+    // Get custom template or default
+    const template = await getTeamWelcomeTemplate(params.orgId);
+
+    // Define template variables
+    const variables: Record<string, string> = {
+      '{{member_name}}': params.memberName,
+      '{{member_email}}': params.memberEmail,
+      '{{portal_url}}': portalUrl,
+    };
+
+    // Replace variables in subject and content
+    const subject = replaceTemplateVariables(template.subject, variables);
+    const htmlContent = replaceTemplateVariables(template.html_content, variables);
+
+    const { data, error } = await resend.emails.send({
+      from: 'outrnk Leads <noreply@leadsignal.de>',
+      to: params.to,
+      subject,
+      html: htmlContent,
+    });
+
+    if (error) {
+      console.error('Resend error:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    return { success: false, error };
+  }
+}
