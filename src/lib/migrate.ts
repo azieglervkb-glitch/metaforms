@@ -158,6 +158,11 @@ export async function runMigrations() {
       )
     `);
 
+    // Organization branding columns (for whitelabel)
+    await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_company_name VARCHAR(255)`);
+    await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_logo_url TEXT`); // Base64 data URL or external URL
+    await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_primary_color VARCHAR(7)`); // Hex color like #0052FF
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);

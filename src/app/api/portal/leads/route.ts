@@ -8,6 +8,12 @@ interface TokenData {
     last_name: string;
 }
 
+interface OrgBranding {
+    branding_company_name: string | null;
+    branding_logo_url: string | null;
+    branding_primary_color: string | null;
+}
+
 interface Lead {
     id: string;
     full_name: string;
@@ -75,12 +81,23 @@ export async function GET(request: NextRequest) {
             ORDER BY assigned_at DESC
         `, [tokenData.team_member_id, tokenData.org_id]);
 
+        // Get org branding
+        const branding = await queryOne<OrgBranding>(`
+            SELECT branding_company_name, branding_logo_url, branding_primary_color
+            FROM organizations WHERE id = $1
+        `, [tokenData.org_id]);
+
         return NextResponse.json({
             teamMember: {
                 firstName: tokenData.first_name,
                 lastName: tokenData.last_name,
             },
             leads: leads || [],
+            branding: branding ? {
+                companyName: branding.branding_company_name,
+                logoUrl: branding.branding_logo_url,
+                primaryColor: branding.branding_primary_color,
+            } : null,
         });
     } catch (error) {
         console.error('Portal leads error:', error);

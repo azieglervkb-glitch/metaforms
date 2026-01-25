@@ -22,6 +22,12 @@ interface TeamMember {
     lastName: string;
 }
 
+interface Branding {
+    companyName: string | null;
+    logoUrl: string | null;
+    primaryColor: string | null;
+}
+
 const COLUMNS = [
     { id: 'new', title: 'Neu', color: 'bg-amber-500', textColor: 'text-amber-700', bgLight: 'bg-amber-50' },
     { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', textColor: 'text-blue-700', bgLight: 'bg-blue-50' },
@@ -35,10 +41,14 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
     const { token } = use(params);
     const [leads, setLeads] = useState<Lead[]>([]);
     const [teamMember, setTeamMember] = useState<TeamMember | null>(null);
+    const [branding, setBranding] = useState<Branding | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [dragging, setDragging] = useState<string | null>(null);
+
+    // Get primary color from branding or default
+    const primaryColor = branding?.primaryColor || '#0052FF';
 
     useEffect(() => {
         fetchLeads();
@@ -57,6 +67,7 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
 
             setTeamMember(data.teamMember);
             setLeads(data.leads || []);
+            setBranding(data.branding || null);
         } catch (err) {
             console.error('Error fetching leads:', err);
             setError('Fehler beim Laden');
@@ -165,8 +176,20 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                         <div className="flex items-center gap-4">
                             {/* Logo */}
                             <div className="flex items-center gap-1">
-                                <span className="text-xl font-bold text-gray-900">outrnk</span>
-                                <span className="text-xl font-bold text-[#0052FF]">.</span>
+                                {branding?.logoUrl ? (
+                                    <img
+                                        src={branding.logoUrl}
+                                        alt={branding.companyName || 'Logo'}
+                                        className="h-8 max-w-[150px] object-contain"
+                                    />
+                                ) : (
+                                    <>
+                                        <span className="text-xl font-bold text-gray-900">
+                                            {branding?.companyName || 'outrnk'}
+                                        </span>
+                                        <span className="text-xl font-bold" style={{ color: primaryColor }}>.</span>
+                                    </>
+                                )}
                             </div>
                             <div className="h-6 w-px bg-gray-200"></div>
                             <div>
@@ -194,8 +217,11 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                 <div className="grid grid-cols-4 gap-4 mb-6">
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-[#0052FF]/10 flex items-center justify-center">
-                                <svg className="w-5 h-5 text-[#0052FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div
+                                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                                style={{ backgroundColor: `${primaryColor}15` }}
+                            >
+                                <svg className="w-5 h-5" style={{ color: primaryColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                 </svg>
                             </div>
@@ -247,9 +273,15 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                 </div>
 
                 {/* Info Banner */}
-                <div className="bg-[#0052FF]/5 border border-[#0052FF]/10 rounded-xl p-4 mb-6 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#0052FF]/10 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-[#0052FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                    className="rounded-xl p-4 mb-6 flex items-center gap-3"
+                    style={{ backgroundColor: `${primaryColor}08`, border: `1px solid ${primaryColor}15` }}
+                >
+                    <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${primaryColor}15` }}
+                    >
+                        <svg className="w-4 h-4" style={{ color: primaryColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
@@ -305,7 +337,10 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                                             >
                                                 {/* Form Name Tag */}
                                                 {lead.form_name && (
-                                                    <div className="text-[10px] font-medium text-[#0052FF] bg-[#0052FF]/10 px-1.5 py-0.5 rounded inline-block mb-1.5">
+                                                    <div
+                                                        className="text-[10px] font-medium px-1.5 py-0.5 rounded inline-block mb-1.5"
+                                                        style={{ color: primaryColor, backgroundColor: `${primaryColor}15` }}
+                                                    >
                                                         {lead.form_name}
                                                     </div>
                                                 )}
@@ -352,6 +387,7 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                 <LeadDetailModal
                     lead={selectedLead}
                     token={token}
+                    primaryColor={primaryColor}
                     onClose={() => setSelectedLead(null)}
                     onUpdate={(updatedLead) => {
                         setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l));
@@ -366,11 +402,13 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
 function LeadDetailModal({
     lead,
     token,
+    primaryColor,
     onClose,
     onUpdate
 }: {
     lead: Lead;
     token: string;
+    primaryColor: string;
     onClose: () => void;
     onUpdate: (lead: Lead) => void;
 }) {
@@ -415,7 +453,10 @@ function LeadDetailModal({
                     <div className="flex items-center justify-between">
                         <div>
                             {lead.form_name && (
-                                <span className="text-xs font-medium text-[#0052FF] bg-[#0052FF]/10 px-2 py-1 rounded inline-block mb-2">
+                                <span
+                                    className="text-xs font-medium px-2 py-1 rounded inline-block mb-2"
+                                    style={{ color: primaryColor, backgroundColor: `${primaryColor}15` }}
+                                >
                                     {lead.form_name}
                                 </span>
                             )}
@@ -437,7 +478,7 @@ function LeadDetailModal({
                             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">E-Mail</label>
                             <p className="font-medium text-gray-900 mt-1">
                                 {lead.email ? (
-                                    <a href={`mailto:${lead.email}`} className="text-[#0052FF] hover:underline">
+                                    <a href={`mailto:${lead.email}`} className="hover:underline" style={{ color: primaryColor }}>
                                         {lead.email}
                                     </a>
                                 ) : '-'}
@@ -447,7 +488,7 @@ function LeadDetailModal({
                             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefon</label>
                             <p className="font-medium text-gray-900 mt-1">
                                 {lead.phone ? (
-                                    <a href={`tel:${lead.phone}`} className="text-[#0052FF] hover:underline">
+                                    <a href={`tel:${lead.phone}`} className="hover:underline" style={{ color: primaryColor }}>
                                         {lead.phone}
                                     </a>
                                 ) : '-'}
@@ -511,7 +552,16 @@ function LeadDetailModal({
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Notizen zum Lead hinzufugen..."
-                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-28 focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none transition-all"
+                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-28 outline-none transition-all"
+                            style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = primaryColor;
+                                e.target.style.boxShadow = `0 0 0 2px ${primaryColor}40`;
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = '#e5e7eb';
+                                e.target.style.boxShadow = 'none';
+                            }}
                         />
                     </div>
                 </div>
@@ -528,7 +578,8 @@ function LeadDetailModal({
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex-1 px-6 py-3 bg-[#0052FF] text-white rounded-xl font-medium hover:bg-[#0047E1] disabled:opacity-50 transition-colors"
+                            className="flex-1 px-6 py-3 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                            style={{ backgroundColor: primaryColor }}
                         >
                             {saving ? 'Speichert...' : 'Speichern'}
                         </button>

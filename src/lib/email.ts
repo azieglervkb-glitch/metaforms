@@ -40,6 +40,58 @@ interface EmailTemplate {
   html_content: string;
 }
 
+interface OrgBranding {
+  companyName: string | null;
+  logoUrl: string | null;
+  primaryColor: string | null;
+}
+
+/**
+ * Get organization branding settings
+ */
+async function getOrgBranding(orgId: string): Promise<OrgBranding> {
+  try {
+    const branding = await queryOne<{
+      branding_company_name: string | null;
+      branding_logo_url: string | null;
+      branding_primary_color: string | null;
+    }>(
+      `SELECT branding_company_name, branding_logo_url, branding_primary_color
+       FROM organizations WHERE id = $1`,
+      [orgId]
+    );
+    return {
+      companyName: branding?.branding_company_name || null,
+      logoUrl: branding?.branding_logo_url || null,
+      primaryColor: branding?.branding_primary_color || null,
+    };
+  } catch {
+    return { companyName: null, logoUrl: null, primaryColor: null };
+  }
+}
+
+/**
+ * Generate email header HTML based on branding
+ */
+function generateBrandedHeader(branding: OrgBranding): string {
+  const color = branding.primaryColor || '#0052FF';
+
+  if (branding.logoUrl) {
+    return `<img src="${branding.logoUrl}" alt="Logo" style="max-height: 40px; max-width: 180px; object-fit: contain;" />`;
+  }
+
+  const name = branding.companyName || 'outrnk';
+  return `<span style="font-size: 20px; font-weight: 700; color: #111827;">${name}<span style="color: ${color};">.</span></span>
+          ${!branding.companyName ? '<span style="color: #d1d5db; margin: 0 8px;">|</span><span style="color: #6b7280; font-size: 14px;">Leads</span>' : ''}`;
+}
+
+/**
+ * Generate footer text based on branding
+ */
+function generateBrandedFooter(branding: OrgBranding): string {
+  return branding.companyName || 'outrnk. Leads';
+}
+
 // Default template for lead assignment emails - Outrnk UI Style (Light + Blue)
 const DEFAULT_TEMPLATE: EmailTemplate = {
   subject: 'Neuer Lead: {{lead_name}}',
@@ -318,6 +370,10 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
     // Get custom template or default
     const template = await getEmailTemplate(params.orgId);
 
+    // Get org branding for customization
+    const branding = await getOrgBranding(params.orgId);
+    const brandColor = branding.primaryColor || '#0052FF';
+
     // Define template variables
     const variables: Record<string, string> = {
       '{{assignee_name}}': params.assigneeName,
@@ -329,14 +385,34 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
       '{{unqualified_url}}': unqualifiedUrl,
       '{{dashboard_url}}': dashboardUrl,
       '{{portal_url}}': portalUrl,
+      '{{brand_header}}': generateBrandedHeader(branding),
+      '{{brand_name}}': branding.companyName || 'outrnk. Leads',
+      '{{brand_color}}': brandColor,
+      '{{brand_footer}}': generateBrandedFooter(branding),
     };
 
     // Replace variables in subject and content
-    const subject = replaceTemplateVariables(template.subject, variables);
-    const htmlContent = replaceTemplateVariables(template.html_content, variables);
+    let subject = replaceTemplateVariables(template.subject, variables);
+    let htmlContent = replaceTemplateVariables(template.html_content, variables);
+
+    // Apply branding to default template (replace hardcoded values)
+    if (branding.companyName || branding.logoUrl || branding.primaryColor) {
+      // Replace default header logo/name
+      htmlContent = htmlContent.replace(
+        /<span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">\.<\/span><\/span>\s*<span style="color: #d1d5db; margin: 0 8px;">\|<\/span>\s*<span style="color: #6b7280; font-size: 14px;">Leads<\/span>/g,
+        generateBrandedHeader(branding)
+      );
+      // Replace default primary color
+      htmlContent = htmlContent.replace(/#0052FF/g, brandColor);
+      // Replace footer brand name
+      htmlContent = htmlContent.replace(/outrnk\. Leads/g, generateBrandedFooter(branding));
+    }
+
+    // Determine sender name
+    const senderName = branding.companyName || 'outrnk Leads';
 
     const { data, error } = await resend.emails.send({
-      from: 'outrnk Leads <noreply@leadsignal.de>',
+      from: `${senderName} <noreply@leadsignal.de>`,
       to: params.to,
       subject,
       html: htmlContent,
@@ -585,19 +661,43 @@ export async function sendTeamMemberWelcomeEmail(params: TeamMemberWelcomeEmailP
     // Get custom template or default
     const template = await getTeamWelcomeTemplate(params.orgId);
 
+    // Get org branding for customization
+    const branding = await getOrgBranding(params.orgId);
+    const brandColor = branding.primaryColor || '#0052FF';
+
     // Define template variables
     const variables: Record<string, string> = {
       '{{member_name}}': params.memberName,
       '{{member_email}}': params.memberEmail,
       '{{portal_url}}': portalUrl,
+      '{{brand_header}}': generateBrandedHeader(branding),
+      '{{brand_name}}': branding.companyName || 'outrnk. Leads',
+      '{{brand_color}}': brandColor,
+      '{{brand_footer}}': generateBrandedFooter(branding),
     };
 
     // Replace variables in subject and content
-    const subject = replaceTemplateVariables(template.subject, variables);
-    const htmlContent = replaceTemplateVariables(template.html_content, variables);
+    let subject = replaceTemplateVariables(template.subject, variables);
+    let htmlContent = replaceTemplateVariables(template.html_content, variables);
+
+    // Apply branding to default template (replace hardcoded values)
+    if (branding.companyName || branding.logoUrl || branding.primaryColor) {
+      // Replace default header logo/name
+      htmlContent = htmlContent.replace(
+        /<span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">\.<\/span><\/span>\s*<span style="color: #d1d5db; margin: 0 8px;">\|<\/span>\s*<span style="color: #6b7280; font-size: 14px;">Leads<\/span>/g,
+        generateBrandedHeader(branding)
+      );
+      // Replace default primary color
+      htmlContent = htmlContent.replace(/#0052FF/g, brandColor);
+      // Replace footer brand name
+      htmlContent = htmlContent.replace(/outrnk\. Leads/g, generateBrandedFooter(branding));
+    }
+
+    // Determine sender name
+    const senderName = branding.companyName || 'outrnk Leads';
 
     const { data, error } = await resend.emails.send({
-      from: 'outrnk Leads <noreply@leadsignal.de>',
+      from: `${senderName} <noreply@leadsignal.de>`,
       to: params.to,
       subject,
       html: htmlContent,

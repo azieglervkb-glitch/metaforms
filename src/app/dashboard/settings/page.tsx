@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import EmailTemplateEditor from '@/components/EmailTemplateEditor';
+import { toast } from 'sonner';
 
 interface MetaConnection {
     connected: boolean;
@@ -15,7 +16,7 @@ export default function SettingsPage() {
     const [connection, setConnection] = useState<MetaConnection>({ connected: false });
     const [loading, setLoading] = useState(true);
     const [webhookUrl, setWebhookUrl] = useState('');
-    const [activeTab, setActiveTab] = useState<'general' | 'email' | 'meta-guide'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'email' | 'branding' | 'meta-guide'>('general');
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -88,6 +89,19 @@ export default function SettingsPage() {
                     }`}
                 >
                     E-Mail Template
+                </button>
+                <button
+                    onClick={() => setActiveTab('branding')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                        activeTab === 'branding'
+                            ? 'bg-[#0052FF] text-white'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                    Branding
                 </button>
                 <button
                     onClick={() => setActiveTab('meta-guide')}
@@ -332,6 +346,9 @@ export default function SettingsPage() {
                 <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <EmailTemplateEditor />
                 </div>
+            ) : activeTab === 'branding' ? (
+                /* Branding Tab */
+                <BrandingEditor />
             ) : (
                 /* Meta Setup Guide Tab */
                 <MetaSetupGuide />
@@ -389,6 +406,358 @@ function PushNotificationToggle() {
         >
             Aktivieren
         </button>
+    );
+}
+
+function BrandingEditor() {
+    const [companyName, setCompanyName] = useState('');
+    const [logoUrl, setLogoUrl] = useState('');
+    const [primaryColor, setPrimaryColor] = useState('#0052FF');
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Load branding settings
+    useEffect(() => {
+        fetchBranding();
+    }, []);
+
+    const fetchBranding = async () => {
+        try {
+            const res = await fetch('/api/settings/branding');
+            const data = await res.json();
+            setCompanyName(data.companyName || '');
+            setLogoUrl(data.logoUrl || '');
+            setPrimaryColor(data.primaryColor || '#0052FF');
+        } catch (error) {
+            console.error('Error loading branding:', error);
+        }
+        setLoading(false);
+    };
+
+    const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Bitte lade ein Bild hoch (PNG, JPG, SVG)');
+            return;
+        }
+
+        // Validate file size (max 500KB)
+        if (file.size > 500 * 1024) {
+            toast.error('Logo ist zu groß. Maximale Größe: 500KB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                // Create canvas to resize if needed
+                const canvas = document.createElement('canvas');
+                const maxWidth = 400;
+                const maxHeight = 100;
+                let { width, height } = img;
+
+                // Calculate new dimensions
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Convert to data URL
+                const dataUrl = canvas.toDataURL(file.type, 0.9);
+                setLogoUrl(dataUrl);
+                setHasChanges(true);
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    }, []);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/settings/branding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyName: companyName || null,
+                    logoUrl: logoUrl || null,
+                    primaryColor: primaryColor || null,
+                }),
+            });
+
+            if (res.ok) {
+                toast.success('Branding gespeichert');
+                setHasChanges(false);
+            } else {
+                const data = await res.json();
+                toast.error(data.error || 'Fehler beim Speichern');
+            }
+        } catch (error) {
+            console.error('Error saving branding:', error);
+            toast.error('Fehler beim Speichern');
+        }
+        setSaving(false);
+    };
+
+    const handleReset = async () => {
+        if (!confirm('Branding wirklich zurücksetzen? Das Logo und der Firmenname werden entfernt.')) return;
+
+        try {
+            const res = await fetch('/api/settings/branding', { method: 'DELETE' });
+            if (res.ok) {
+                setCompanyName('');
+                setLogoUrl('');
+                setPrimaryColor('#0052FF');
+                setHasChanges(false);
+                toast.success('Branding zurückgesetzt');
+            }
+        } catch (error) {
+            console.error('Error resetting branding:', error);
+            toast.error('Fehler beim Zurücksetzen');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-40 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Whitelabel Branding</h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Passe das Erscheinungsbild für deine Team-Mitglieder an. Dein Logo und Firmenname erscheinen im Portal und in E-Mails.
+                        </p>
+                    </div>
+                    {(companyName || logoUrl) && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                            Aktiv
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Company Name */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-medium text-gray-900 mb-4">Firmenname</h3>
+                <div className="space-y-3">
+                    <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => {
+                            setCompanyName(e.target.value);
+                            setHasChanges(true);
+                        }}
+                        placeholder="z.B. Meine Firma GmbH"
+                        className="w-full max-w-md px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
+                    />
+                    <p className="text-xs text-gray-500">
+                        Dieser Name ersetzt "outrnk Leads" in E-Mails und im Portal für deine Team-Mitglieder.
+                    </p>
+                </div>
+            </div>
+
+            {/* Logo Upload */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-medium text-gray-900 mb-4">Logo</h3>
+                <div className="space-y-4">
+                    {/* Logo Preview */}
+                    <div className="flex items-start gap-6">
+                        <div
+                            className="w-[200px] h-[60px] border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center bg-gray-50 cursor-pointer hover:border-[#0052FF] hover:bg-[#0052FF]/5 transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            {logoUrl ? (
+                                <img
+                                    src={logoUrl}
+                                    alt="Logo"
+                                    className="max-w-full max-h-full object-contain p-2"
+                                />
+                            ) : (
+                                <div className="text-center">
+                                    <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-xs text-gray-500">Logo hochladen</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLogoUpload}
+                                className="hidden"
+                            />
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                    {logoUrl ? 'Logo ändern' : 'Logo hochladen'}
+                                </button>
+                                {logoUrl && (
+                                    <button
+                                        onClick={() => {
+                                            setLogoUrl('');
+                                            setHasChanges(true);
+                                        }}
+                                        className="ml-2 px-4 py-2 text-red-600 text-sm font-medium hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                        Entfernen
+                                    </button>
+                                )}
+                            </div>
+                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs text-gray-600 font-medium mb-1">Empfehlungen:</p>
+                                <ul className="text-xs text-gray-500 space-y-0.5">
+                                    <li>• Format: PNG, JPG oder SVG</li>
+                                    <li>• Ideale Größe: 400 x 100 Pixel</li>
+                                    <li>• Maximale Dateigröße: 500KB</li>
+                                    <li>• Transparenter Hintergrund empfohlen</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Primary Color */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-medium text-gray-900 mb-4">Primärfarbe (optional)</h3>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(e) => {
+                                setPrimaryColor(e.target.value);
+                                setHasChanges(true);
+                            }}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <input
+                            type="text"
+                            value={primaryColor}
+                            onChange={(e) => {
+                                if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) {
+                                    setPrimaryColor(e.target.value);
+                                    setHasChanges(true);
+                                }
+                            }}
+                            placeholder="#0052FF"
+                            className="w-32 px-3 py-2 border border-gray-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Farbe für Buttons in E-Mails und im Portal.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-medium text-gray-900 mb-4">Vorschau: E-Mail Header</h3>
+                <div className="bg-gray-100 rounded-xl p-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 max-w-[560px] mx-auto overflow-hidden">
+                        {/* Email Header Preview */}
+                        <div className="p-6 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                {logoUrl ? (
+                                    <img src={logoUrl} alt="Logo" className="h-8 max-w-[150px] object-contain" />
+                                ) : (
+                                    <span className="text-xl font-bold text-gray-900">
+                                        {companyName || 'outrnk'}<span style={{ color: primaryColor }}>.</span>
+                                    </span>
+                                )}
+                                {!logoUrl && (
+                                    <>
+                                        <span className="text-gray-300">|</span>
+                                        <span className="text-gray-500 text-sm">Leads</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        {/* Sample Content */}
+                        <div className="p-6">
+                            <span
+                                className="inline-block px-2.5 py-1 rounded text-xs font-semibold uppercase"
+                                style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                            >
+                                Willkommen
+                            </span>
+                            <h2 className="text-lg font-semibold text-gray-900 mt-2">Hallo Max Mustermann!</h2>
+                            <p className="text-gray-600 text-sm mt-2">
+                                Du wurdest als Team-Mitglied hinzugefügt...
+                            </p>
+                            <button
+                                className="mt-4 px-5 py-2.5 text-white text-sm font-medium rounded-lg"
+                                style={{ backgroundColor: primaryColor }}
+                            >
+                                Portal öffnen
+                            </button>
+                        </div>
+                        {/* Footer */}
+                        <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
+                            <p className="text-xs text-gray-400">
+                                Automatisch gesendet von {companyName || 'outrnk. Leads'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between">
+                <button
+                    onClick={handleReset}
+                    disabled={!companyName && !logoUrl}
+                    className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Auf Standard zurücksetzen
+                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={fetchBranding}
+                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+                    >
+                        Abbrechen
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving || !hasChanges}
+                        className="px-6 py-2 bg-[#0052FF] text-white rounded-lg text-sm font-medium hover:bg-[#0047E1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {saving ? 'Wird gespeichert...' : 'Speichern'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
