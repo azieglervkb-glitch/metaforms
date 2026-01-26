@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { toast, Toaster } from 'sonner';
+import OnboardingTutorial from '@/components/OnboardingTutorial';
 
 interface Lead {
     id: string;
@@ -395,6 +396,57 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
                     }}
                 />
             )}
+
+            {/* Onboarding Tutorial */}
+            <OnboardingTutorial
+                storageKey={`portal_onboarding_${token}`}
+                primaryColor={primaryColor}
+                welcomeTitle="Willkommen im Lead-Portal!"
+                welcomeSubtitle="Hier verwaltest du deine zugewiesenen Leads. Wir zeigen dir kurz, wie alles funktioniert."
+                steps={[
+                    {
+                        icon: (
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                            </svg>
+                        ),
+                        title: 'Dein Kanban-Board',
+                        description: 'Deine Leads sind in Spalten nach Status sortiert: Neu, Kontaktiert, Interessiert, Termin, Gewonnen und Verloren. So siehst du auf einen Blick, wo jeder Lead steht.',
+                        tip: 'Die Zahlen oben zeigen dir eine schnelle Ubersicht uber zugewiesene, qualifizierte und zu bewertende Leads.',
+                    },
+                    {
+                        icon: (
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        ),
+                        title: 'Drag & Drop',
+                        description: 'Ziehe einen Lead einfach von einer Spalte in eine andere, um seinen Status zu andern. Zum Beispiel von "Neu" zu "Kontaktiert", wenn du den Lead angerufen hast.',
+                        tip: 'Der Status wird sofort gespeichert, du musst nichts extra bestatigen.',
+                    },
+                    {
+                        icon: (
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        ),
+                        title: 'Lead-Details',
+                        description: 'Klicke auf einen Lead, um alle Details zu sehen: Kontaktdaten, Formular-Antworten, Status und Qualitats-Bewertung. Du kannst auch Notizen hinzufugen.',
+                        tip: 'Bewerte die Lead-Qualitat mit Daumen hoch/runter, damit die Lead-Qualitat verbessert werden kann.',
+                    },
+                    {
+                        icon: (
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        ),
+                        title: 'Aktivitaten erfassen',
+                        description: 'Im Tab "Aktivitaten" kannst du Anrufe, E-Mails, Meetings und Notizen fur jeden Lead dokumentieren. So hast du die komplette Kommunikationshistorie an einem Ort.',
+                        tip: 'Wahle den Aktivitatstyp, gib einen Titel und optional eine Beschreibung ein, und setze das Datum.',
+                    },
+                ]}
+            />
         </div>
     );
 }

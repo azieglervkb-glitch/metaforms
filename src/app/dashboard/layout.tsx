@@ -1,6 +1,7 @@
 // Dashboard layout with outrnk style navigation
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import DashboardOnboarding from '@/components/DashboardOnboarding';
 
 const NAV_ITEMS = [
     { href: '/dashboard', label: 'Übersicht' },
@@ -92,6 +93,8 @@ export default async function DashboardLayout({
             <main className="max-w-7xl mx-auto p-6">
                 {children}
             </main>
+
+            <DashboardOnboarding />
         </div>
     );
 }
