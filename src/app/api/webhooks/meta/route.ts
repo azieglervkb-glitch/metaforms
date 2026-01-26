@@ -96,10 +96,14 @@ async function processLead(
             }
         }
 
-        // Parse field data
+        // Parse field data - store all values (FB multiple choice can have multiple)
         const fieldMap: Record<string, string> = {};
         for (const field of leadData.field_data || []) {
-            fieldMap[field.name] = field.values[0] || '';
+            if (field.values.length > 1) {
+                fieldMap[field.name] = field.values.join(', ');
+            } else {
+                fieldMap[field.name] = field.values[0] || '';
+            }
         }
 
         // Extract standard fields

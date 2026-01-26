@@ -628,9 +628,20 @@ function LeadDetailModal({
         setSaving(false);
     };
 
-    const additionalFields = lead.raw_data ? Object.entries(lead.raw_data)
-        .filter(([key]) => !['email', 'phone', 'full_name'].includes(key))
-        .map(([key, value]) => ({ key, value: String(value) })) : [];
+    // Parse raw_data defensively (may arrive as string or object)
+    let parsedRawData: Record<string, unknown> = {};
+    if (lead.raw_data) {
+        if (typeof lead.raw_data === 'string') {
+            try { parsedRawData = JSON.parse(lead.raw_data as string); } catch { parsedRawData = {}; }
+        } else {
+            parsedRawData = lead.raw_data;
+        }
+    }
+    const STANDARD_FIELDS = ['email', 'phone', 'phone_number', 'full_name', 'first_name', 'last_name'];
+    const additionalFields = Object.entries(parsedRawData)
+        .filter(([key]) => !STANDARD_FIELDS.includes(key))
+        .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+        .map(([key, value]) => ({ key, value: String(value) }));
 
     const formatActivityDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -783,7 +794,7 @@ function LeadDetailModal({
                                     <div className="bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100">
                                         {additionalFields.map(({ key, value }) => (
                                             <div key={key} className="flex items-start px-4 py-3">
-                                                <span className="text-xs font-medium text-gray-500 w-2/5 pt-0.5">{key.replace(/_/g, ' ')}</span>
+                                                <span className="text-xs font-medium text-gray-500 w-2/5 pt-0.5 capitalize">{key.replace(/_/g, ' ').replace(/^question\s*(\d+)$/i, 'Frage $1')}</span>
                                                 <span className="text-sm text-gray-900 w-3/5">{value}</span>
                                             </div>
                                         ))}

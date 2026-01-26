@@ -261,9 +261,10 @@ export default function LeadDetailModal({
             formData = lead.raw_data;
         }
     }
-    const extraFields = Object.entries(formData).filter(([key]) =>
-        !['full_name', 'email', 'phone', 'phone_number'].includes(key)
-    );
+    const STANDARD_FIELDS = ['full_name', 'first_name', 'last_name', 'email', 'phone', 'phone_number'];
+    const extraFields = Object.entries(formData)
+        .filter(([key]) => !STANDARD_FIELDS.includes(key))
+        .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
 
     const formatDateTime = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('de-DE', {
@@ -416,7 +417,7 @@ export default function LeadDetailModal({
                                     <div className="bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100">
                                         {extraFields.map(([key, value]) => (
                                             <div key={key} className="flex items-start px-4 py-3">
-                                                <span className="text-xs font-medium text-gray-500 w-2/5 pt-0.5">{key.replace(/_/g, ' ')}</span>
+                                                <span className="text-xs font-medium text-gray-500 w-2/5 pt-0.5 capitalize">{key.replace(/_/g, ' ').replace(/^question\s*(\d+)$/i, 'Frage $1')}</span>
                                                 <span className="text-sm text-gray-900 w-3/5">{String(value)}</span>
                                             </div>
                                         ))}
