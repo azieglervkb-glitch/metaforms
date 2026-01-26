@@ -1,0 +1,183 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
+
+interface AutoMessageTemplate {
+    id: string;
+    org_id: string;
+    name: string;
+    type: string;
+    form_id: string | null;
+    form_name: string | null;
+    subject: string | null;
+    sender_name: string | null;
+    content: unknown;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+// GET - List all templates for org
+export async function GET(request: NextRequest) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const payload = verifyToken(token);
+        if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        let templates: AutoMessageTemplate[] = [];
+        try {
+            templates = await query<AutoMessageTemplate>(
+                `SELECT * FROM auto_message_templates WHERE org_id = $1 ORDER BY created_at DESC`,
+                [payload.orgId]
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ templates: [] });
+            }
+            throw dbError;
+        }
+
+        // Also get available forms from leads
+        const forms = await query<{ form_id: string; form_name: string }>(
+            `SELECT DISTINCT form_id, form_name FROM leads
+             WHERE org_id = $1 AND form_id IS NOT NULL AND form_name IS NOT NULL
+             ORDER BY form_name`,
+            [payload.orgId]
+        );
+
+        return NextResponse.json({ templates, forms });
+    } catch (error) {
+        console.error('List templates error:', error);
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+    }
+}
+
+// POST - Create new template
+export async function POST(request: NextRequest) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const payload = verifyToken(token);
+        if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const body = await request.json();
+        const { name, type, formId, formName, subject, senderName, content, isActive } = body;
+
+        if (!name || !type || !content) {
+            return NextResponse.json({ error: 'Name, Typ und Inhalt sind erforderlich' }, { status: 400 });
+        }
+
+        if (!['email', 'whatsapp'].includes(type)) {
+            return NextResponse.json({ error: 'Typ muss email oder whatsapp sein' }, { status: 400 });
+        }
+
+        const template = await queryOne<AutoMessageTemplate>(
+            `INSERT INTO auto_message_templates (org_id, name, type, form_id, form_name, subject, sender_name, content, is_active)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [
+                payload.orgId,
+                name,
+                type,
+                formId || null,
+                formName || null,
+                subject || null,
+                senderName || null,
+                JSON.stringify(content),
+                isActive !== false,
+            ]
+        );
+
+        return NextResponse.json({ template });
+    } catch (error) {
+        console.error('Create template error:', error);
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+    }
+}
+
+// PATCH - Update template
+export async function PATCH(request: NextRequest) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const payload = verifyToken(token);
+        if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const body = await request.json();
+        const { id, name, formId, formName, subject, senderName, content, isActive } = body;
+
+        if (!id) {
+            return NextResponse.json({ error: 'Template ID erforderlich' }, { status: 400 });
+        }
+
+        // Verify ownership
+        const existing = await queryOne<{ id: string }>(
+            `SELECT id FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
+            [id, payload.orgId]
+        );
+        if (!existing) {
+            return NextResponse.json({ error: 'Template nicht gefunden' }, { status: 404 });
+        }
+
+        const updates: string[] = [];
+        const values: unknown[] = [];
+        let idx = 1;
+
+        if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name); }
+        if (formId !== undefined) { updates.push(`form_id = $${idx++}`); values.push(formId || null); }
+        if (formName !== undefined) { updates.push(`form_name = $${idx++}`); values.push(formName || null); }
+        if (subject !== undefined) { updates.push(`subject = $${idx++}`); values.push(subject); }
+        if (senderName !== undefined) { updates.push(`sender_name = $${idx++}`); values.push(senderName); }
+        if (content !== undefined) { updates.push(`content = $${idx++}`); values.push(JSON.stringify(content)); }
+        if (isActive !== undefined) { updates.push(`is_active = $${idx++}`); values.push(isActive); }
+
+        updates.push(`updated_at = NOW()`);
+        values.push(id);
+        values.push(payload.orgId);
+
+        const template = await queryOne<AutoMessageTemplate>(
+            `UPDATE auto_message_templates SET ${updates.join(', ')}
+             WHERE id = $${idx++} AND org_id = $${idx}
+             RETURNING *`,
+            values
+        );
+
+        return NextResponse.json({ template });
+    } catch (error) {
+        console.error('Update template error:', error);
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+    }
+}
+
+// DELETE - Delete template
+export async function DELETE(request: NextRequest) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const payload = verifyToken(token);
+        if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'Template ID erforderlich' }, { status: 400 });
+        }
+
+        await query(
+            `DELETE FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
+            [id, payload.orgId]
+        );
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Delete template error:', error);
+        return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 });
+    }
+}

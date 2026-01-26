@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { href: '/dashboard/leads', label: 'Leads' },
     { href: '/dashboard/kanban', label: 'Kanban' },
     { href: '/dashboard/team', label: 'Team' },
+    { href: '/dashboard/automations', label: 'Automationen' },
     { href: '/dashboard/analytics', label: 'Analytics' },
     { href: '/dashboard/settings', label: 'Einstellungen' },
 ];

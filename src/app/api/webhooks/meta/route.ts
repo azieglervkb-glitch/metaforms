@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { getLeadDetails, getFormDetails } from '@/lib/meta-api';
+import { sendAutoMessages } from '@/lib/auto-message';
 
 interface MetaConnection {
     org_id: string;
@@ -120,7 +121,26 @@ async function processLead(
 
         console.log('Lead saved successfully:', leadgenId, 'Form:', formName);
 
-        // TODO: Send notification (email, WhatsApp, Slack)
+        // Send auto-messages (email + WhatsApp) to the new lead
+        try {
+            const insertedLead = await queryOne<{ id: string }>(
+                'SELECT id FROM leads WHERE org_id = $1 AND meta_lead_id = $2',
+                [connection.org_id, leadgenId]
+            );
+            if (insertedLead) {
+                await sendAutoMessages(connection.org_id, insertedLead.id, {
+                    id: insertedLead.id,
+                    email,
+                    phone,
+                    fullName,
+                    formId,
+                    formName,
+                    rawData: fieldMap,
+                });
+            }
+        } catch (autoMsgError) {
+            console.error('Auto-message sending failed (non-blocking):', autoMsgError);
+        }
     } catch (error) {
         console.error('Failed to process lead:', error);
     }
