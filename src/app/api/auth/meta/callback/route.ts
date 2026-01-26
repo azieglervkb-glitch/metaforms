@@ -109,36 +109,26 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(`${appUrl}/dashboard/settings?error=no_pages`);
         }
 
-        // Use first page (or could prompt user to select)
-        const page = pagesData.data[0];
-
-        // Calculate expiration (long-lived tokens last ~60 days)
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 60);
-
-        // Save or update connection
-        const existing = await queryOne<{ id: string }>(
-            'SELECT id FROM meta_connections WHERE org_id = $1',
+        // Clean up old temporary tokens for this org
+        await query(
+            'DELETE FROM meta_oauth_temp WHERE org_id = $1',
             [payload.orgId]
         );
 
-        if (existing) {
-            await query(
-                `UPDATE meta_connections
-                 SET access_token = $1, user_id = $2, page_id = $3, page_name = $4,
-                     connected_at = NOW(), expires_at = $5
-                 WHERE org_id = $6`,
-                [page.access_token, 'user', page.id, page.name, expiresAt, payload.orgId]
-            );
-        } else {
-            await query(
-                `INSERT INTO meta_connections (org_id, access_token, user_id, page_id, page_name, expires_at)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [payload.orgId, page.access_token, 'user', page.id, page.name, expiresAt]
-            );
+        // Store pages temporarily for selection (expires in 15 minutes)
+        const tempResult = await queryOne<{ id: string }>(
+            `INSERT INTO meta_oauth_temp (org_id, user_access_token, pages_json)
+             VALUES ($1, $2, $3)
+             RETURNING id`,
+            [payload.orgId, accessToken, JSON.stringify(pagesData.data)]
+        );
+
+        if (!tempResult) {
+            return NextResponse.redirect(`${appUrl}/dashboard/settings?error=temp_save_failed`);
         }
 
-        return NextResponse.redirect(`${appUrl}/dashboard/settings?success=connected`);
+        // Redirect to page selection
+        return NextResponse.redirect(`${appUrl}/dashboard/settings/meta-connect?session=${tempResult.id}`);
     } catch (error) {
         console.error('Meta OAuth callback error:', error);
         const appUrl = await getAppUrl(request);

@@ -158,6 +158,18 @@ export async function runMigrations() {
       )
     `);
 
+    // Temporary storage for Meta OAuth flow (page selection)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS meta_oauth_temp (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        user_access_token TEXT NOT NULL,
+        pages_json JSONB NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        expires_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() + INTERVAL '15 minutes'
+      )
+    `);
+
     // Organization branding columns (for whitelabel)
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_company_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_logo_url TEXT`); // Base64 data URL or external URL
