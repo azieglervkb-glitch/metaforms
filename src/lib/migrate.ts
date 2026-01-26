@@ -170,6 +170,22 @@ export async function runMigrations() {
       )
     `);
 
+    // Lead activities table (timeline tracking: calls, meetings, notes, etc.)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS lead_activities (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+        org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        created_by_type VARCHAR(20) NOT NULL DEFAULT 'admin',
+        created_by_id UUID,
+        activity_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        activity_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+
     // Organization branding columns (for whitelabel)
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_company_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS branding_logo_url TEXT`); // Base64 data URL or external URL
@@ -185,6 +201,7 @@ export async function runMigrations() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_templates_org_id ON email_templates(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_member_tokens_token ON team_member_tokens(token)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_team_member_tokens_member ON team_member_tokens(team_member_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_lead_activities_lead_id ON lead_activities(lead_id)`);
 
     console.log('Database migrations completed successfully!');
   } catch (error) {

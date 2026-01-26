@@ -399,6 +399,77 @@ export default function PortalPage({ params }: { params: Promise<{ token: string
     );
 }
 
+interface Activity {
+    id: string;
+    activity_type: string;
+    title: string;
+    description: string | null;
+    activity_date: string;
+    created_at: string;
+    created_by_type: string;
+}
+
+const ACTIVITY_TYPES = [
+    { id: 'call', label: 'Anruf' },
+    { id: 'email', label: 'E-Mail' },
+    { id: 'meeting', label: 'Meeting' },
+    { id: 'note', label: 'Notiz' },
+];
+
+const STATUS_OPTIONS = [
+    { id: 'new', label: 'Neu', color: '#F59E0B', bg: '#FEF3C7' },
+    { id: 'contacted', label: 'Kontaktiert', color: '#3B82F6', bg: '#DBEAFE' },
+    { id: 'interested', label: 'Interessiert', color: '#8B5CF6', bg: '#EDE9FE' },
+    { id: 'meeting', label: 'Termin', color: '#6366F1', bg: '#E0E7FF' },
+    { id: 'won', label: 'Gewonnen', color: '#10B981', bg: '#D1FAE5' },
+    { id: 'lost', label: 'Verloren', color: '#EF4444', bg: '#FEE2E2' },
+];
+
+function getActivityIcon(type: string) {
+    switch (type) {
+        case 'call':
+            return (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+            );
+        case 'email':
+            return (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            );
+        case 'meeting':
+            return (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            );
+        case 'note':
+            return (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            );
+        default:
+            return (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            );
+    }
+}
+
+function getActivityColor(type: string) {
+    switch (type) {
+        case 'call': return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+        case 'email': return { text: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
+        case 'meeting': return { text: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' };
+        case 'note': return { text: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+        default: return { text: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+    }
+}
+
 function LeadDetailModal({
     lead,
     token,
@@ -412,9 +483,73 @@ function LeadDetailModal({
     onClose: () => void;
     onUpdate: (lead: Lead) => void;
 }) {
+    const [activeTab, setActiveTab] = useState<'details' | 'activities'>('details');
     const [notes, setNotes] = useState(lead.notes || '');
     const [qualityStatus, setQualityStatus] = useState(lead.quality_status);
+    const [status, setStatus] = useState(lead.status);
     const [saving, setSaving] = useState(false);
+
+    // Activities state
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [loadingActivities, setLoadingActivities] = useState(false);
+    const [showAddActivity, setShowAddActivity] = useState(false);
+    const [newActivity, setNewActivity] = useState({
+        type: 'call',
+        title: '',
+        description: '',
+        date: new Date().toISOString().slice(0, 16),
+    });
+    const [savingActivity, setSavingActivity] = useState(false);
+
+    const currentStatus = STATUS_OPTIONS.find(s => s.id === status) || STATUS_OPTIONS[0];
+
+    useEffect(() => {
+        if (activeTab === 'activities' && activities.length === 0) {
+            fetchActivities();
+        }
+    }, [activeTab]);
+
+    const fetchActivities = async () => {
+        setLoadingActivities(true);
+        try {
+            const res = await fetch(`/api/portal/leads/${lead.id}/activities`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setActivities(data.activities || []);
+        } catch (error) {
+            console.error('Error fetching activities:', error);
+        }
+        setLoadingActivities(false);
+    };
+
+    const handleAddActivity = async () => {
+        if (!newActivity.title.trim()) return;
+        setSavingActivity(true);
+        try {
+            const res = await fetch(`/api/portal/leads/${lead.id}/activities`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    activityType: newActivity.type,
+                    title: newActivity.title,
+                    description: newActivity.description || null,
+                    activityDate: newActivity.date ? new Date(newActivity.date).toISOString() : null,
+                }),
+            });
+            if (res.ok) {
+                setNewActivity({ type: 'call', title: '', description: '', date: new Date().toISOString().slice(0, 16) });
+                setShowAddActivity(false);
+                await fetchActivities();
+            }
+        } catch (error) {
+            console.error('Error adding activity:', error);
+        }
+        setSavingActivity(false);
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -425,12 +560,12 @@ function LeadDetailModal({
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ notes, qualityStatus }),
+                body: JSON.stringify({ notes, qualityStatus, status }),
             });
 
             if (res.ok) {
-                toast.success('Anderungen gespeichert');
-                onUpdate({ ...lead, notes, quality_status: qualityStatus });
+                toast.success('Gespeichert');
+                onUpdate({ ...lead, notes, quality_status: qualityStatus, status });
             } else {
                 toast.error('Fehler beim Speichern');
             }
@@ -445,140 +580,397 @@ function LeadDetailModal({
         .filter(([key]) => !['email', 'phone', 'full_name'].includes(key))
         .map(([key, value]) => ({ key, value: String(value) })) : [];
 
+    const formatActivityDate = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Gerade eben';
+        if (diffMins < 60) return `vor ${diffMins} Min.`;
+        if (diffHours < 24) return `vor ${diffHours} Std.`;
+        if (diffDays < 7) return `vor ${diffDays} Tagen`;
+        return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                {/* Modal Header */}
-                <div className="p-6 border-b border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            {lead.form_name && (
-                                <span
-                                    className="text-xs font-medium px-2 py-1 rounded inline-block mb-2"
-                                    style={{ color: primaryColor, backgroundColor: `${primaryColor}15` }}
-                                >
-                                    {lead.form_name}
-                                </span>
-                            )}
-                            <h2 className="text-xl font-bold text-gray-900">{lead.full_name || 'Lead Details'}</h2>
-                            <p className="text-sm text-gray-500 mt-0.5">Zugewiesen am {new Date(lead.assigned_at).toLocaleDateString('de-DE')}</p>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="border-b border-gray-100 px-6 py-5">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                            <div
+                                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}CC)` }}
+                            >
+                                {lead.full_name?.charAt(0)?.toUpperCase() || '?'}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-lg font-bold text-gray-900">{lead.full_name || 'Unbekannt'}</h2>
+                                    <span
+                                        className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                                        style={{ color: currentStatus.color, backgroundColor: currentStatus.bg }}
+                                    >
+                                        {currentStatus.label}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1">
+                                    {lead.form_name && (
+                                        <span
+                                            className="text-xs font-medium px-2 py-0.5 rounded"
+                                            style={{ color: primaryColor, backgroundColor: `${primaryColor}12` }}
+                                        >
+                                            {lead.form_name}
+                                        </span>
+                                    )}
+                                    <span className="text-xs text-gray-400">
+                                        Zugewiesen: {new Date(lead.assigned_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="w-10 h-10 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
-                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
+
+                    {/* Tabs */}
+                    <div className="flex gap-1 mt-4 bg-gray-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setActiveTab('details')}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                activeTab === 'details'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Details
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('activities')}
+                            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                                activeTab === 'activities'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Aktivitaten
+                                {activities.length > 0 && (
+                                    <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded-full">
+                                        {activities.length}
+                                    </span>
+                                )}
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-                    {/* Contact Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">E-Mail</label>
-                            <p className="font-medium text-gray-900 mt-1">
-                                {lead.email ? (
-                                    <a href={`mailto:${lead.email}`} className="hover:underline" style={{ color: primaryColor }}>
-                                        {lead.email}
-                                    </a>
-                                ) : '-'}
-                            </p>
-                        </div>
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefon</label>
-                            <p className="font-medium text-gray-900 mt-1">
-                                {lead.phone ? (
-                                    <a href={`tel:${lead.phone}`} className="hover:underline" style={{ color: primaryColor }}>
-                                        {lead.phone}
-                                    </a>
-                                ) : '-'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Additional Form Fields */}
-                    {additionalFields.length > 0 && (
-                        <div>
-                            <label className="text-sm font-semibold text-gray-900 block mb-3">Weitere Angaben</label>
-                            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                                {additionalFields.map(({ key, value }) => (
-                                    <div key={key} className="flex">
-                                        <span className="text-gray-500 text-sm w-1/3 font-medium">{key}</span>
-                                        <span className="text-gray-900 text-sm">{value}</span>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto">
+                    {activeTab === 'details' ? (
+                        <div className="p-6 space-y-5">
+                            {/* Contact Info */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">E-Mail</span>
                                     </div>
-                                ))}
+                                    {lead.email ? (
+                                        <a href={`mailto:${lead.email}`} className="text-sm font-medium hover:underline break-all" style={{ color: primaryColor }}>
+                                            {lead.email}
+                                        </a>
+                                    ) : (
+                                        <span className="text-sm text-gray-300">-</span>
+                                    )}
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Telefon</span>
+                                    </div>
+                                    {lead.phone ? (
+                                        <a href={`tel:${lead.phone}`} className="text-sm font-medium hover:underline" style={{ color: primaryColor }}>
+                                            {lead.phone}
+                                        </a>
+                                    ) : (
+                                        <span className="text-sm text-gray-300">-</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Additional Form Fields */}
+                            {additionalFields.length > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Formular-Antworten</h3>
+                                    <div className="bg-gray-50 rounded-xl border border-gray-100 divide-y divide-gray-100">
+                                        {additionalFields.map(({ key, value }) => (
+                                            <div key={key} className="flex items-start px-4 py-3">
+                                                <span className="text-xs font-medium text-gray-500 w-2/5 pt-0.5">{key.replace(/_/g, ' ')}</span>
+                                                <span className="text-sm text-gray-900 w-3/5">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Status */}
+                            <div>
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Status</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {STATUS_OPTIONS.map((s) => (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => setStatus(s.id)}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border"
+                                            style={{
+                                                color: status === s.id ? '#fff' : s.color,
+                                                backgroundColor: status === s.id ? s.color : s.bg,
+                                                borderColor: status === s.id ? s.color : 'transparent',
+                                                boxShadow: status === s.id ? `0 2px 8px ${s.color}40` : 'none',
+                                            }}
+                                        >
+                                            {s.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Quality Rating */}
+                            <div>
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Lead-Qualitat bewerten</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => setQualityStatus('qualified')}
+                                        className={`py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 border ${qualityStatus === 'qualified'
+                                            ? 'bg-green-500 text-white border-green-500 shadow-lg shadow-green-500/20'
+                                            : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                        </svg>
+                                        Qualifiziert
+                                    </button>
+                                    <button
+                                        onClick={() => setQualityStatus('unqualified')}
+                                        className={`py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 border ${qualityStatus === 'unqualified'
+                                            ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20'
+                                            : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                                        }`}
+                                    >
+                                        <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                        </svg>
+                                        Unqualifiziert
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2 text-center">
+                                    Deine Bewertung hilft dabei, die Lead-Qualitat zu verbessern.
+                                </p>
+                            </div>
+
+                            {/* Notes */}
+                            <div>
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Notizen</h3>
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Notizen zum Lead..."
+                                    className="w-full p-3 border border-gray-200 rounded-xl resize-none h-24 text-sm outline-none transition-all"
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = primaryColor;
+                                        e.target.style.boxShadow = `0 0 0 2px ${primaryColor}30`;
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = '#e5e7eb';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
+                                />
                             </div>
                         </div>
-                    )}
+                    ) : (
+                        /* Activities Tab */
+                        <div className="p-6">
+                            {/* Add Activity Button */}
+                            {!showAddActivity ? (
+                                <button
+                                    onClick={() => setShowAddActivity(true)}
+                                    className="w-full mb-4 px-4 py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                    style={{ '--hover-color': primaryColor } as React.CSSProperties}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    Aktivitat hinzufugen
+                                </button>
+                            ) : (
+                                <div className="mb-5 bg-gray-50 rounded-xl border border-gray-200 p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-semibold text-gray-900">Neue Aktivitat</h4>
+                                        <button
+                                            onClick={() => setShowAddActivity(false)}
+                                            className="text-gray-400 hover:text-gray-600"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
 
-                    {/* Quality Rating */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">Lead-Qualitat bewerten</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setQualityStatus('qualified')}
-                                className={`py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${qualityStatus === 'qualified'
-                                    ? 'bg-green-500 text-white shadow-lg shadow-green-500/25'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                </svg>
-                                Gut / Qualifiziert
-                            </button>
-                            <button
-                                onClick={() => setQualityStatus('unqualified')}
-                                className={`py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${qualityStatus === 'unqualified'
-                                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/25'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                </svg>
-                                Schlecht / Unqualifiziert
-                            </button>
+                                    <div className="flex gap-2 mb-3">
+                                        {ACTIVITY_TYPES.map((type) => (
+                                            <button
+                                                key={type.id}
+                                                onClick={() => setNewActivity({ ...newActivity, type: type.id })}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                                                style={{
+                                                    backgroundColor: newActivity.type === type.id ? primaryColor : '#f3f4f6',
+                                                    color: newActivity.type === type.id ? '#fff' : '#4b5563',
+                                                    border: newActivity.type === type.id ? 'none' : '1px solid #e5e7eb',
+                                                }}
+                                            >
+                                                {getActivityIcon(type.id)}
+                                                {type.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <input
+                                        type="text"
+                                        value={newActivity.title}
+                                        onChange={(e) => setNewActivity({ ...newActivity, title: e.target.value })}
+                                        placeholder="z.B. Erstgesprach gefuhrt, Termin vereinbart..."
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-2 outline-none transition-all"
+                                        onFocus={(e) => { e.target.style.borderColor = primaryColor; e.target.style.boxShadow = `0 0 0 2px ${primaryColor}30`; }}
+                                        onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                                    />
+
+                                    <textarea
+                                        value={newActivity.description}
+                                        onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
+                                        placeholder="Optionale Beschreibung..."
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm mb-2 resize-none h-16 outline-none transition-all"
+                                        onFocus={(e) => { e.target.style.borderColor = primaryColor; e.target.style.boxShadow = `0 0 0 2px ${primaryColor}30`; }}
+                                        onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                                    />
+
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="datetime-local"
+                                            value={newActivity.date}
+                                            onChange={(e) => setNewActivity({ ...newActivity, date: e.target.value })}
+                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none"
+                                        />
+                                        <button
+                                            onClick={handleAddActivity}
+                                            disabled={!newActivity.title.trim() || savingActivity}
+                                            className="px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                                            style={{ backgroundColor: primaryColor }}
+                                        >
+                                            {savingActivity ? 'Speichert...' : 'Hinzufugen'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Activities Timeline */}
+                            {loadingActivities ? (
+                                <div className="flex justify-center py-8">
+                                    <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${primaryColor} transparent ${primaryColor} ${primaryColor}` }}></div>
+                                </div>
+                            ) : activities.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-sm text-gray-400">Noch keine Aktivitaten</p>
+                                    <p className="text-xs text-gray-300 mt-1">Fugen Sie Anrufe, Meetings oder Notizen hinzu</p>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gray-200"></div>
+                                    <div className="space-y-4">
+                                        {activities.map((activity) => {
+                                            const colors = getActivityColor(activity.activity_type);
+                                            return (
+                                                <div key={activity.id} className="flex gap-3 relative">
+                                                    <div className={`w-10 h-10 rounded-full ${colors.bg} border-2 ${colors.border} flex items-center justify-center flex-shrink-0 relative z-10 ${colors.text}`}>
+                                                        {getActivityIcon(activity.activity_type)}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pb-1">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                                                                {activity.description && (
+                                                                    <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{activity.description}</p>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                                                                {formatActivityDate(activity.activity_date)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
+                                                                {ACTIVITY_TYPES.find(t => t.id === activity.activity_type)?.label || activity.activity_type}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-300">
+                                                                {new Date(activity.activity_date).toLocaleDateString('de-DE', {
+                                                                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-2 text-center">
-                            Deine Bewertung hilft dabei, die Lead-Qualitat zu verbessern.
-                        </p>
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">Notizen</label>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Notizen zum Lead hinzufugen..."
-                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-28 outline-none transition-all"
-                            style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-                            onFocus={(e) => {
-                                e.target.style.borderColor = primaryColor;
-                                e.target.style.boxShadow = `0 0 0 2px ${primaryColor}40`;
-                            }}
-                            onBlur={(e) => {
-                                e.target.style.borderColor = '#e5e7eb';
-                                e.target.style.boxShadow = 'none';
-                            }}
-                        />
-                    </div>
+                    )}
                 </div>
 
-                {/* Modal Footer */}
-                <div className="p-6 border-t border-gray-100 bg-gray-50">
+                {/* Footer */}
+                <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50">
                     <div className="flex gap-3">
                         <button
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                            className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
                         >
-                            Abbrechen
+                            Schliessen
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex-1 px-6 py-3 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+                            className="flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
                             style={{ backgroundColor: primaryColor }}
                         >
                             {saving ? 'Speichert...' : 'Speichern'}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import LeadDetailModal from '@/components/LeadDetailModal';
 
 interface Lead {
     id: string;
@@ -17,12 +17,14 @@ interface Lead {
     assigned_to: string | null;
     assigned_name?: string;
     form_name: string | null;
+    raw_data?: Record<string, unknown>;
 }
 
 interface TeamMember {
     id: string;
     first_name: string;
     last_name: string;
+    full_name?: string;
     email: string;
 }
 
@@ -38,14 +40,6 @@ const COLUMNS = [
     { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', textColor: 'text-indigo-700', bgLight: 'bg-indigo-50', sendsCAPI: true },
     { id: 'won', title: 'Gewonnen', color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50', sendsCAPI: true },
     { id: 'lost', title: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50', sendsCAPI: true },
-];
-
-// Stages that can send CAPI signals
-const CAPI_STAGES = [
-    { id: 'interested', label: 'Interessiert', color: 'bg-purple-500', isPositive: true },
-    { id: 'meeting', label: 'Termin', color: 'bg-indigo-500', isPositive: true },
-    { id: 'won', label: 'Gewonnen', color: 'bg-green-500', isPositive: true },
-    { id: 'lost', label: 'Verloren', color: 'bg-red-500', isPositive: false },
 ];
 
 export default function KanbanPage() {
@@ -338,268 +332,3 @@ export default function KanbanPage() {
     );
 }
 
-function LeadDetailModal({
-    lead,
-    teamMembers,
-    onClose,
-    onUpdate
-}: {
-    lead: Lead;
-    teamMembers: TeamMember[];
-    onClose: () => void;
-    onUpdate: () => void;
-}) {
-    const [notes, setNotes] = useState(lead.notes || '');
-    const [status, setStatus] = useState(lead.status);
-    const [assignedTo, setAssignedTo] = useState(lead.assigned_to || '');
-    const [saving, setSaving] = useState(false);
-    const [sendingStage, setSendingStage] = useState<string | null>(null);
-    const [assigning, setAssigning] = useState(false);
-    const [sentStages, setSentStages] = useState<string[]>(lead.capi_sent_stages || []);
-
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            await fetch(`/api/leads/${lead.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes, status }),
-            });
-            onUpdate();
-        } catch (error) {
-            console.error('Error saving:', error);
-        }
-        setSaving(false);
-    };
-
-    const handleAssign = async () => {
-        if (!assignedTo) return;
-        setAssigning(true);
-
-        try {
-            const res = await fetch('/api/leads/assign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId: lead.id, teamMemberId: assignedTo }),
-            });
-
-            const data = await res.json();
-            if (res.ok && data.success) {
-                alert(data.message || 'Lead erfolgreich zugewiesen!');
-                onUpdate();
-            } else {
-                alert(data.error || 'Fehler beim Zuweisen');
-            }
-        } catch (error) {
-            console.error('Error assigning:', error);
-            alert('Netzwerkfehler beim Zuweisen');
-        }
-        setAssigning(false);
-    };
-
-    const handleSendStageSignal = async (stage: string) => {
-        setSendingStage(stage);
-        try {
-            const res = await fetch('/api/capi/send-event', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leadId: lead.id, stage }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setSentStages(data.sent_stages || [...sentStages, stage]);
-                alert(`Signal "${stage}" erfolgreich an Meta gesendet!`);
-            } else {
-                alert(data.error || 'Fehler beim Senden');
-            }
-        } catch (error) {
-            console.error('Error sending signal:', error);
-            alert('Netzwerkfehler beim Senden');
-        }
-        setSendingStage(null);
-    };
-
-    const statusOptions = [
-        { id: 'new', label: 'Neu', color: 'bg-amber-500' },
-        { id: 'contacted', label: 'Kontaktiert', color: 'bg-blue-500' },
-        { id: 'interested', label: 'Interessiert', color: 'bg-purple-500' },
-        { id: 'meeting', label: 'Termin', color: 'bg-indigo-500' },
-        { id: 'won', label: 'Gewonnen', color: 'bg-green-500' },
-        { id: 'lost', label: 'Verloren', color: 'bg-red-500' },
-    ];
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                {/* Modal Header */}
-                <div className="p-6 border-b border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            {lead.form_name && (
-                                <span className="text-xs font-medium text-[#0052FF] bg-[#0052FF]/10 px-2 py-1 rounded inline-block mb-2">
-                                    {lead.form_name}
-                                </span>
-                            )}
-                            <h2 className="text-xl font-bold text-gray-900">{lead.full_name || 'Lead Details'}</h2>
-                            <p className="text-sm text-gray-500 mt-0.5">Erstellt am {new Date(lead.created_at).toLocaleDateString('de-DE')}</p>
-                        </div>
-                        <button onClick={onClose} className="w-10 h-10 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors">
-                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-                    {/* Contact Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">E-Mail</label>
-                            <p className="font-medium text-gray-900 mt-1">
-                                {lead.email ? (
-                                    <a href={`mailto:${lead.email}`} className="text-[#0052FF] hover:underline">{lead.email}</a>
-                                ) : '-'}
-                            </p>
-                        </div>
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefon</label>
-                            <p className="font-medium text-gray-900 mt-1">
-                                {lead.phone ? (
-                                    <a href={`tel:${lead.phone}`} className="text-[#0052FF] hover:underline">{lead.phone}</a>
-                                ) : '-'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Status Selection */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">Status</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {statusOptions.map((s) => (
-                                <button
-                                    key={s.id}
-                                    onClick={() => setStatus(s.id)}
-                                    className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${status === s.id
-                                        ? `${s.color} text-white shadow-lg`
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    <div className={`w-2 h-2 rounded-full ${status === s.id ? 'bg-white' : s.color}`}></div>
-                                    {s.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Team Assignment */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">Team-Mitglied zuweisen</label>
-                        <div className="flex gap-3">
-                            <select
-                                value={assignedTo}
-                                onChange={(e) => setAssignedTo(e.target.value)}
-                                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none"
-                            >
-                                <option value="">-- Mitarbeiter wahlen --</option>
-                                {teamMembers.map((member) => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.first_name} {member.last_name}
-                                    </option>
-                                ))}
-                            </select>
-                            <button
-                                onClick={handleAssign}
-                                disabled={!assignedTo || assigning}
-                                className="px-4 py-2.5 bg-[#0052FF] text-white rounded-xl text-sm font-medium hover:bg-[#0047E1] disabled:opacity-50 transition-colors"
-                            >
-                                {assigning ? 'Zuweisen...' : 'Zuweisen'}
-                            </button>
-                        </div>
-                        {teamMembers.length === 0 && (
-                            <p className="text-sm text-gray-500 mt-2">
-                                <Link href="/dashboard/team" className="text-[#0052FF] hover:underline">
-                                    Team-Mitglieder hinzufugen →
-                                </Link>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">Notizen</label>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Notizen zum Lead hinzufugen..."
-                            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-28 focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none transition-all"
-                        />
-                    </div>
-
-                    {/* Meta Signals Section */}
-                    <div>
-                        <label className="text-sm font-semibold text-gray-900 block mb-3">
-                            Meta Signale
-                            <span className="font-normal text-gray-500 ml-2">- Sende Feedback an Meta fur bessere Lead-Qualitat</span>
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {CAPI_STAGES.map((stage) => {
-                                const isSent = sentStages.includes(stage.id);
-                                const isSending = sendingStage === stage.id;
-                                return (
-                                    <button
-                                        key={stage.id}
-                                        onClick={() => !isSent && handleSendStageSignal(stage.id)}
-                                        disabled={isSent || isSending}
-                                        className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                                            isSent
-                                                ? 'bg-gray-100 text-gray-400 cursor-default'
-                                                : stage.isPositive
-                                                    ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                                                    : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                                        }`}
-                                    >
-                                        {isSent ? (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                            </svg>
-                                        )}
-                                        {isSending ? 'Sendet...' : isSent ? `${stage.label} ✓` : stage.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        {sentStages.length > 0 && (
-                            <p className="text-xs text-gray-500 mt-2">
-                                Gesendet: {sentStages.map(s => CAPI_STAGES.find(c => c.id === s)?.label || s).join(', ')}
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="p-6 border-t border-gray-100 bg-gray-50">
-                    <div className="flex gap-3">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-                        >
-                            Abbrechen
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex-1 px-6 py-3 bg-[#0052FF] text-white rounded-xl font-medium hover:bg-[#0047E1] disabled:opacity-50 transition-colors"
-                        >
-                            {saving ? 'Speichert...' : 'Speichern'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}

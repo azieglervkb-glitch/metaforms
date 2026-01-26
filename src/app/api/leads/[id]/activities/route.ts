@@ -1,0 +1,100 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
+
+interface Activity {
+    id: string;
+    lead_id: string;
+    activity_type: string;
+    title: string;
+    description: string | null;
+    activity_date: string;
+    created_by_type: string;
+    created_by_id: string | null;
+    created_at: string;
+}
+
+// GET - List activities for a lead
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const payload = verifyToken(token);
+        if (!payload) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { id } = await params;
+
+        const activities = await query<Activity>(
+            `SELECT * FROM lead_activities
+             WHERE lead_id = $1 AND org_id = $2
+             ORDER BY activity_date DESC, created_at DESC`,
+            [id, payload.orgId]
+        );
+
+        return NextResponse.json({ activities });
+    } catch (error) {
+        console.error('Error fetching activities:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+// POST - Create a new activity
+export async function POST(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const token = request.cookies.get('auth_token')?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const payload = verifyToken(token);
+        if (!payload) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { id } = await params;
+        const body = await request.json();
+        const { activityType, title, description, activityDate } = body;
+
+        if (!activityType || !title) {
+            return NextResponse.json({ error: 'Activity type and title required' }, { status: 400 });
+        }
+
+        const validTypes = ['call', 'email', 'meeting', 'note', 'status_change'];
+        if (!validTypes.includes(activityType)) {
+            return NextResponse.json({ error: 'Invalid activity type' }, { status: 400 });
+        }
+
+        // Verify lead belongs to org
+        const lead = await queryOne<{ id: string }>(
+            'SELECT id FROM leads WHERE id = $1 AND org_id = $2',
+            [id, payload.orgId]
+        );
+
+        if (!lead) {
+            return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+        }
+
+        const activity = await queryOne<Activity>(
+            `INSERT INTO lead_activities (lead_id, org_id, created_by_type, created_by_id, activity_type, title, description, activity_date)
+             VALUES ($1, $2, 'admin', $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [id, payload.orgId, payload.userId, activityType, title, description || null, activityDate || new Date().toISOString()]
+        );
+
+        return NextResponse.json({ success: true, activity });
+    } catch (error) {
+        console.error('Error creating activity:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
