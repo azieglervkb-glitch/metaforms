@@ -53,12 +53,21 @@ export async function GET(
             return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
         }
 
-        const activities = await query<Activity>(
-            `SELECT * FROM lead_activities
-             WHERE lead_id = $1 AND org_id = $2
-             ORDER BY activity_date DESC, created_at DESC`,
-            [id, tokenData.org_id]
-        );
+        let activities: Activity[] = [];
+        try {
+            activities = await query<Activity>(
+                `SELECT * FROM lead_activities
+                 WHERE lead_id = $1 AND org_id = $2
+                 ORDER BY activity_date DESC, created_at DESC`,
+                [id, tokenData.org_id]
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ activities: [] });
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ activities });
     } catch (error) {

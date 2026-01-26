@@ -24,11 +24,21 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const branding = await queryOne<BrandingSettings>(
-            `SELECT branding_company_name, branding_logo_url, branding_primary_color
-             FROM organizations WHERE id = $1`,
-            [payload.orgId]
-        );
+        let branding: BrandingSettings | null = null;
+        try {
+            branding = await queryOne<BrandingSettings>(
+                `SELECT branding_company_name, branding_logo_url, branding_primary_color
+                 FROM organizations WHERE id = $1`,
+                [payload.orgId]
+            );
+        } catch (dbError: unknown) {
+            // Columns may not exist yet if migration hasn't run
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ companyName: null, logoUrl: null, primaryColor: null });
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({
             companyName: branding?.branding_company_name || null,

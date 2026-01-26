@@ -17,6 +17,8 @@ interface Lead {
     assigned_to: string | null;
     notes: string | null;
     created_at: string;
+    raw_data: Record<string, unknown> | null;
+    capi_sent_stages: string[] | null;
 }
 
 interface StatusCount {

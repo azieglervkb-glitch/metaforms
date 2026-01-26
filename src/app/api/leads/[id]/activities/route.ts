@@ -32,12 +32,22 @@ export async function GET(
 
         const { id } = await params;
 
-        const activities = await query<Activity>(
-            `SELECT * FROM lead_activities
-             WHERE lead_id = $1 AND org_id = $2
-             ORDER BY activity_date DESC, created_at DESC`,
-            [id, payload.orgId]
-        );
+        let activities: Activity[] = [];
+        try {
+            activities = await query<Activity>(
+                `SELECT * FROM lead_activities
+                 WHERE lead_id = $1 AND org_id = $2
+                 ORDER BY activity_date DESC, created_at DESC`,
+                [id, payload.orgId]
+            );
+        } catch (dbError: unknown) {
+            // Table may not exist yet if migration hasn't run
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ activities: [] });
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ activities });
     } catch (error) {

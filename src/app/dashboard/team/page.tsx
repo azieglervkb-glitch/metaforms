@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import LeadDetailModal from '@/components/LeadDetailModal';
 
 interface TeamMember {
     id: string;
@@ -23,9 +24,14 @@ interface Lead {
     full_name: string;
     status: string;
     quality_status: string;
+    quality_feedback_sent: boolean;
+    capi_sent_stages: string[];
     form_name: string | null;
     notes: string | null;
+    assigned_to: string | null;
+    assigned_name?: string;
     created_at: string;
+    raw_data?: Record<string, unknown>;
 }
 
 interface MemberAnalytics {
@@ -33,6 +39,15 @@ interface MemberAnalytics {
     byStatus: Record<string, number>;
     byQuality: Record<string, number>;
 }
+
+const KANBAN_COLUMNS = [
+    { id: 'new', title: 'Neu', color: 'bg-amber-500', textColor: 'text-amber-700', bgLight: 'bg-amber-50' },
+    { id: 'contacted', title: 'Kontaktiert', color: 'bg-blue-500', textColor: 'text-blue-700', bgLight: 'bg-blue-50' },
+    { id: 'interested', title: 'Interessiert', color: 'bg-purple-500', textColor: 'text-purple-700', bgLight: 'bg-purple-50' },
+    { id: 'meeting', title: 'Termin', color: 'bg-indigo-500', textColor: 'text-indigo-700', bgLight: 'bg-indigo-50' },
+    { id: 'won', title: 'Gewonnen', color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50' },
+    { id: 'lost', title: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50' },
+];
 
 export default function TeamPage() {
     const [members, setMembers] = useState<TeamMember[]>([]);
@@ -51,6 +66,9 @@ export default function TeamPage() {
     const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null);
     const [loadingMemberData, setLoadingMemberData] = useState(false);
     const [memberFormFilter, setMemberFormFilter] = useState<string>('');
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [dragging, setDragging] = useState<string | null>(null);
+    const [allTeamMembers, setAllTeamMembers] = useState<{ id: string; first_name: string; last_name: string; email: string }[]>([]);
 
     useEffect(() => {
         fetchMembers();
@@ -60,7 +78,14 @@ export default function TeamPage() {
         try {
             const res = await fetch('/api/team');
             const data = await res.json();
-            setMembers(data.members || []);
+            const membersData = data.members || [];
+            setMembers(membersData);
+            setAllTeamMembers(membersData.map((m: TeamMember) => ({
+                id: m.id,
+                first_name: m.first_name,
+                last_name: m.last_name,
+                email: m.email,
+            })));
         } catch (error) {
             console.error('Error fetching team:', error);
         }
@@ -88,9 +113,11 @@ export default function TeamPage() {
 
     const handleCloseMemberModal = () => {
         setSelectedMember(null);
+        setSelectedLead(null);
         setMemberLeads([]);
         setMemberAnalytics(null);
         setMemberFormFilter('');
+        setDragging(null);
     };
 
     // Get unique forms from member leads
@@ -100,11 +127,6 @@ export default function TeamPage() {
         }
         return acc;
     }, [] as { name: string }[]);
-
-    // Filter member leads by form
-    const filteredMemberLeads = memberFormFilter
-        ? memberLeads.filter(lead => lead.form_name === memberFormFilter)
-        : memberLeads;
 
     const handleAddMember = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -225,24 +247,51 @@ export default function TeamPage() {
     const totalQualified = members.reduce((sum, m) => sum + parseInt(m.qualified_leads || '0'), 0);
     const totalUnqualified = members.reduce((sum, m) => sum + parseInt(m.unqualified_leads || '0'), 0);
 
-    // Status configuration for kanban - simplified
-    const statusConfig = [
-        { key: 'new', label: 'Neu' },
-        { key: 'contacted', label: 'Kontaktiert' },
-        { key: 'qualified', label: 'Qualifiziert' },
-        { key: 'proposal', label: 'Angebot' },
-        { key: 'won', label: 'Gewonnen' },
-        { key: 'lost', label: 'Verloren' },
-    ];
-
-    const getLeadsByStatus = (status: string) => memberLeads.filter(l => l.status === status);
+    const getLeadsByStatus = (status: string) => {
+        const filtered = memberFormFilter
+            ? memberLeads.filter(l => l.form_name === memberFormFilter)
+            : memberLeads;
+        return filtered.filter(l => l.status === status);
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('de-DE', {
             day: '2-digit',
             month: '2-digit',
-            year: '2-digit',
         });
+    };
+
+    const updateLeadStatus = async (leadId: string, newStatus: string) => {
+        const previousLeads = memberLeads;
+        setMemberLeads(memberLeads.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+        try {
+            const res = await fetch(`/api/leads/${leadId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            if (!res.ok) {
+                setMemberLeads(previousLeads);
+            }
+        } catch (error) {
+            console.error('Error updating lead:', error);
+            setMemberLeads(previousLeads);
+        }
+    };
+
+    const handleDragStart = (leadId: string) => {
+        setDragging(leadId);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (columnId: string) => {
+        if (dragging) {
+            updateLeadStatus(dragging, columnId);
+            setDragging(null);
+        }
     };
 
     return (
@@ -449,10 +498,10 @@ export default function TeamPage() {
                                         </div>
                                     </div>
 
-                                    {/* Leads Table */}
+                                    {/* Kanban Board */}
                                     <div>
                                         <div className="flex items-center justify-between mb-3">
-                                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Zugewiesene Leads</h3>
+                                            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Pipeline</h3>
                                             {memberForms.length > 1 && (
                                                 <select
                                                     value={memberFormFilter}
@@ -468,61 +517,79 @@ export default function TeamPage() {
                                                 </select>
                                             )}
                                         </div>
-                                        {filteredMemberLeads.length === 0 ? (
+                                        {memberLeads.length === 0 ? (
                                             <div className="bg-gray-50 rounded-lg p-8 text-center">
                                                 <p className="text-gray-500">Noch keine Leads zugewiesen</p>
                                             </div>
                                         ) : (
-                                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                                                <table className="w-full">
-                                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                                        <tr>
-                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Name</th>
-                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Formular</th>
-                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Qualitat</th>
-                                                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Datum</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-100">
-                                                        {filteredMemberLeads.map((lead) => (
-                                                            <tr key={lead.id} className="hover:bg-gray-50">
-                                                                <td className="px-4 py-3">
-                                                                    <p className="font-medium text-gray-900">{lead.full_name || '-'}</p>
-                                                                    <p className="text-sm text-gray-500">{lead.email}</p>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-sm text-gray-600">
-                                                                    {lead.form_name || '-'}
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    <span className="text-sm text-gray-700">
-                                                                        {statusConfig.find(s => s.key === lead.status)?.label || lead.status}
+                                            <div className="grid grid-cols-6 gap-3 min-h-[400px]">
+                                                {KANBAN_COLUMNS.map((column) => {
+                                                    const columnLeads = getLeadsByStatus(column.id);
+                                                    return (
+                                                        <div
+                                                            key={column.id}
+                                                            className="bg-gray-50 rounded-xl border border-gray-200 flex flex-col"
+                                                            onDragOver={handleDragOver}
+                                                            onDrop={() => handleDrop(column.id)}
+                                                        >
+                                                            {/* Column Header */}
+                                                            <div className="p-2.5 border-b border-gray-200">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <div className={`w-2 h-2 rounded-full ${column.color}`}></div>
+                                                                        <h4 className="font-semibold text-gray-900 text-xs">{column.title}</h4>
+                                                                    </div>
+                                                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${column.bgLight} ${column.textColor}`}>
+                                                                        {columnLeads.length}
                                                                     </span>
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    {lead.quality_status === 'qualified' && (
-                                                                        <span className="inline-flex items-center gap-1 text-sm text-green-700">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                                            Gut
-                                                                        </span>
-                                                                    )}
-                                                                    {lead.quality_status === 'unqualified' && (
-                                                                        <span className="inline-flex items-center gap-1 text-sm text-red-700">
-                                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                                                            Schlecht
-                                                                        </span>
-                                                                    )}
-                                                                    {lead.quality_status === 'pending' && (
-                                                                        <span className="text-sm text-gray-400">-</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-sm text-gray-500">
-                                                                    {formatDate(lead.created_at)}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Column Content */}
+                                                            <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto max-h-[350px]">
+                                                                {columnLeads.map((lead) => (
+                                                                    <div
+                                                                        key={lead.id}
+                                                                        draggable
+                                                                        onDragStart={() => handleDragStart(lead.id)}
+                                                                        onClick={() => setSelectedLead(lead)}
+                                                                        className={`bg-white hover:bg-blue-50 rounded-lg p-2.5 cursor-pointer transition-all border border-transparent hover:border-[#0052FF]/20 hover:shadow-sm ${dragging === lead.id ? 'opacity-50 scale-95' : ''}`}
+                                                                    >
+                                                                        {lead.form_name && (
+                                                                            <div className="text-[9px] font-medium text-[#0052FF] bg-[#0052FF]/10 px-1.5 py-0.5 rounded inline-block mb-1">
+                                                                                {lead.form_name}
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="font-medium text-gray-900 text-xs mb-0.5 truncate">
+                                                                            {lead.full_name || lead.email || 'Unbekannt'}
+                                                                        </div>
+                                                                        {lead.email && (
+                                                                            <div className="text-[10px] text-gray-500 truncate">{lead.email}</div>
+                                                                        )}
+                                                                        {lead.phone && (
+                                                                            <div className="text-[10px] text-gray-500">{lead.phone}</div>
+                                                                        )}
+                                                                        <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-gray-100">
+                                                                            <span className="text-[10px] text-gray-400">{formatDate(lead.created_at)}</span>
+                                                                            {lead.quality_status === 'qualified' && (
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" title="Qualifiziert"></span>
+                                                                            )}
+                                                                            {lead.quality_status === 'unqualified' && (
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" title="Nicht qualifiziert"></span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+
+                                                                {columnLeads.length === 0 && (
+                                                                    <div className="text-center py-6 text-gray-400 text-[10px] border border-dashed border-gray-200 rounded-lg">
+                                                                        Leads hierher ziehen
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -531,6 +598,21 @@ export default function TeamPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Lead Detail Modal */}
+            {selectedLead && (
+                <LeadDetailModal
+                    lead={selectedLead}
+                    teamMembers={allTeamMembers}
+                    onClose={() => setSelectedLead(null)}
+                    onUpdate={() => {
+                        if (selectedMember) {
+                            fetchMemberLeads(selectedMember.id);
+                        }
+                        setSelectedLead(null);
+                    }}
+                />
             )}
 
             {/* Team Members Grid */}
