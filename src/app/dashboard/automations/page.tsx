@@ -16,6 +16,7 @@ interface Template {
     id: string;
     name: string;
     type: 'email' | 'whatsapp';
+    trigger: 'new_lead' | 'lead_assigned';
     form_id: string | null;
     form_name: string | null;
     subject: string | null;
@@ -212,6 +213,7 @@ export default function AutomationsPage() {
                 body: JSON.stringify({
                     name: preset.name,
                     type: preset.type,
+                    trigger: 'new_lead',
                     subject: preset.subject || null,
                     content: preset.content,
                     isActive: false,
@@ -243,6 +245,7 @@ export default function AutomationsPage() {
                 body: JSON.stringify({
                     name: type === 'email' ? 'Neue E-Mail' : 'Neue WhatsApp Nachricht',
                     type,
+                    trigger: 'new_lead',
                     subject: type === 'email' ? 'Nachricht von {{company_name}}' : null,
                     content,
                     isActive: false,
@@ -270,6 +273,7 @@ export default function AutomationsPage() {
                 body: JSON.stringify({
                     id: template.id,
                     name: template.name,
+                    trigger: template.trigger,
                     formId: template.form_id,
                     formName: template.form_name,
                     subject: template.subject,
@@ -419,6 +423,9 @@ export default function AutomationsPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-0.5">
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-1.5 ${t.trigger === 'lead_assigned' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
+                                        {t.trigger === 'lead_assigned' ? 'Bei Zuweisung' : 'Bei Eingang'}
+                                    </span>
                                     {t.form_name ? `Formular: ${t.form_name}` : 'Alle Formulare'}
                                     {t.subject && ` • Betreff: ${t.subject}`}
                                 </p>
@@ -711,6 +718,47 @@ function TemplateEditor({ template, forms, variables, saving, onSave, onClose }:
                     {/* Template Settings */}
                     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                         <h3 className="font-medium text-gray-900 text-sm">Einstellungen</h3>
+
+                        {/* Trigger */}
+                        <div>
+                            <label className="text-xs font-medium text-gray-500 block mb-1">Ausloser</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setT({ ...t, trigger: 'new_lead' })}
+                                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                        t.trigger !== 'lead_assigned'
+                                            ? 'border-[#0052FF] bg-[#0052FF]/5'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center">
+                                            <svg className="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                        </span>
+                                        <span className="text-sm font-medium text-gray-900">Bei Eingang</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 ml-7">Wenn ein Lead ins CRM kommt</p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setT({ ...t, trigger: 'lead_assigned' })}
+                                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                        t.trigger === 'lead_assigned'
+                                            ? 'border-[#0052FF] bg-[#0052FF]/5'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center">
+                                            <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        </span>
+                                        <span className="text-sm font-medium text-gray-900">Bei Zuweisung</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 ml-7">Wenn Lead zugewiesen wird</p>
+                                </button>
+                            </div>
+                        </div>
 
                         {/* Form Assignment */}
                         <div>

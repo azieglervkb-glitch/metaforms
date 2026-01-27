@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 import { sendLeadAssignmentEmail } from '@/lib/email';
+import { sendAutoMessages } from '@/lib/auto-message';
 
 interface AssignLeadBody {
     teamMemberId: string;
@@ -31,8 +32,8 @@ export async function POST(
         const { teamMemberId } = body;
 
         // Get the lead
-        const lead = await queryOne<{ id: string; org_id: string; full_name: string; email: string; phone: string; form_name: string | null }>(
-            'SELECT id, org_id, full_name, email, phone, form_name FROM leads WHERE id = $1',
+        const lead = await queryOne<{ id: string; org_id: string; full_name: string; email: string; phone: string; form_id: string | null; form_name: string | null; raw_data: string | null }>(
+            'SELECT id, org_id, full_name, email, phone, form_id, form_name, raw_data FROM leads WHERE id = $1',
             [leadId]
         );
 
@@ -83,6 +84,25 @@ export async function POST(
         } catch (emailError) {
             console.error('Failed to send assignment email:', emailError);
             // Don't fail the request if email fails
+        }
+
+        // Send auto-messages triggered by lead assignment
+        try {
+            let rawData: Record<string, string> = {};
+            if (lead.raw_data) {
+                try { rawData = typeof lead.raw_data === 'string' ? JSON.parse(lead.raw_data) : lead.raw_data as Record<string, string>; } catch { /* */ }
+            }
+            await sendAutoMessages(payload.orgId, leadId, {
+                id: leadId,
+                email: lead.email || null,
+                phone: lead.phone || null,
+                fullName: lead.full_name || null,
+                formId: lead.form_id || null,
+                formName: lead.form_name || null,
+                rawData,
+            }, 'lead_assigned');
+        } catch (autoMsgError) {
+            console.error('Auto-message sending failed (non-blocking):', autoMsgError);
         }
 
         return NextResponse.json({

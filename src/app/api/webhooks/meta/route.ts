@@ -136,7 +136,7 @@ async function processLead(
                     formId,
                     formName,
                     rawData: fieldMap,
-                });
+                }, 'new_lead');
             }
         } catch (autoMsgError) {
             console.error('Auto-message sending failed (non-blocking):', autoMsgError);

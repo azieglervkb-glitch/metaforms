@@ -8,6 +8,7 @@ interface AutoMessageTemplate {
     org_id: string;
     name: string;
     type: string;
+    trigger: string;
     form_id: string | null;
     subject: string | null;
     sender_name: string | null;
@@ -283,13 +284,14 @@ async function sendAutoWhatsApp(
 }
 
 /**
- * Main function: Send all matching auto-messages for a new lead
- * Called from the webhook handler after lead insertion
+ * Main function: Send all matching auto-messages for a lead event
+ * @param trigger - 'new_lead' (form submission) or 'lead_assigned' (assigned to team member)
  */
 export async function sendAutoMessages(
     orgId: string,
     leadId: string,
-    lead: LeadData
+    lead: LeadData,
+    trigger: 'new_lead' | 'lead_assigned' = 'new_lead'
 ) {
     try {
         // Get org settings
@@ -308,15 +310,16 @@ export async function sendAutoMessages(
         if (!settings) return;
         if (!settings.auto_email_enabled && !settings.auto_whatsapp_enabled) return;
 
-        // Get active templates matching this form
+        // Get active templates matching this form and trigger
         let templates: AutoMessageTemplate[] = [];
         try {
             templates = await query<AutoMessageTemplate>(
                 `SELECT * FROM auto_message_templates
                  WHERE org_id = $1 AND is_active = true
-                 AND (form_id IS NULL OR form_id = $2)
+                 AND (trigger = $2 OR trigger IS NULL)
+                 AND (form_id IS NULL OR form_id = $3)
                  ORDER BY created_at ASC`,
-                [orgId, lead.formId]
+                [orgId, trigger, lead.formId]
             );
         } catch {
             return; // Table doesn't exist yet

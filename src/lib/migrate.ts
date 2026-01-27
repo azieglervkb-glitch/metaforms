@@ -230,6 +230,9 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS auto_email_enabled BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS auto_whatsapp_enabled BOOLEAN DEFAULT false`);
 
+    // Trigger column for auto-message templates (new_lead = on form submission, lead_assigned = on assignment)
+    await pool.query(`ALTER TABLE auto_message_templates ADD COLUMN IF NOT EXISTS trigger VARCHAR(30) DEFAULT 'new_lead'`);
+
     // Indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_org_id ON leads(org_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`);

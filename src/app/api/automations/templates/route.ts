@@ -7,6 +7,7 @@ interface AutoMessageTemplate {
     org_id: string;
     name: string;
     type: string;
+    trigger: string;
     form_id: string | null;
     form_name: string | null;
     subject: string | null;
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
         if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { name, type, formId, formName, subject, senderName, content, isActive } = body;
+        const { name, type, trigger, formId, formName, subject, senderName, content, isActive } = body;
 
         if (!name || !type || !content) {
             return NextResponse.json({ error: 'Name, Typ und Inhalt sind erforderlich' }, { status: 400 });
@@ -75,16 +76,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Typ muss email oder whatsapp sein' }, { status: 400 });
         }
 
+        const triggerValue = ['new_lead', 'lead_assigned'].includes(trigger) ? trigger : 'new_lead';
+
         let template: AutoMessageTemplate | null = null;
         try {
             template = await queryOne<AutoMessageTemplate>(
-                `INSERT INTO auto_message_templates (org_id, name, type, form_id, form_name, subject, sender_name, content, is_active)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `INSERT INTO auto_message_templates (org_id, name, type, trigger, form_id, form_name, subject, sender_name, content, is_active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                  RETURNING *`,
                 [
                     payload.orgId,
                     name,
                     type,
+                    triggerValue,
                     formId || null,
                     formName || null,
                     subject || null,
@@ -121,7 +125,7 @@ export async function PATCH(request: NextRequest) {
         if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { id, name, formId, formName, subject, senderName, content, isActive } = body;
+        const { id, name, trigger, formId, formName, subject, senderName, content, isActive } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'Template ID erforderlich' }, { status: 400 });
@@ -149,6 +153,7 @@ export async function PATCH(request: NextRequest) {
         let idx = 1;
 
         if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name); }
+        if (trigger !== undefined) { updates.push(`trigger = $${idx++}`); values.push(trigger); }
         if (formId !== undefined) { updates.push(`form_id = $${idx++}`); values.push(formId || null); }
         if (formName !== undefined) { updates.push(`form_name = $${idx++}`); values.push(formName || null); }
         if (subject !== undefined) { updates.push(`subject = $${idx++}`); values.push(subject); }
