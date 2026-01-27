@@ -48,6 +48,9 @@ interface Settings {
     autoWhatsappEnabled: boolean;
     whatsappApiKey: string | null;
     whatsappApiKeySet: boolean;
+    resendApiKey: string | null;
+    resendApiKeySet: boolean;
+    resendFromEmail: string | null;
 }
 
 const PRESET_TEMPLATES: { name: string; type: 'email' | 'whatsapp'; subject?: string; content: unknown }[] = [
@@ -127,6 +130,7 @@ export default function AutomationsPage() {
     const [settings, setSettings] = useState<Settings>({
         autoEmailEnabled: false, autoWhatsappEnabled: false,
         whatsappApiKey: null, whatsappApiKeySet: false,
+        resendApiKey: null, resendApiKeySet: false, resendFromEmail: null,
     });
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
@@ -137,6 +141,10 @@ export default function AutomationsPage() {
 
     // WhatsApp settings form
     const [waKeyInput, setWaKeyInput] = useState('');
+
+    // Resend settings form
+    const [resendKeyInput, setResendKeyInput] = useState('');
+    const [resendEmailInput, setResendEmailInput] = useState('');
 
     const fetchAll = useCallback(async () => {
         try {
@@ -185,6 +193,44 @@ export default function AutomationsPage() {
             if (res.ok) {
                 toast.success('WhatsApp API Key gespeichert');
                 setWaKeyInput('');
+                fetchAll();
+            }
+        } catch { toast.error('Fehler'); }
+    };
+
+    const handleSaveResend = async () => {
+        if (!resendKeyInput || !resendEmailInput) {
+            toast.error('API Key und Absender-E-Mail sind erforderlich');
+            return;
+        }
+        try {
+            const res = await fetch('/api/automations/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resendApiKey: resendKeyInput, resendFromEmail: resendEmailInput }),
+            });
+            if (res.ok) {
+                toast.success('Resend Konfiguration gespeichert');
+                setResendKeyInput('');
+                setResendEmailInput('');
+                fetchAll();
+            } else {
+                const data = await res.json();
+                toast.error(data.error || 'Fehler');
+            }
+        } catch { toast.error('Fehler'); }
+    };
+
+    const handleRemoveResend = async () => {
+        if (!confirm('Resend-Verbindung wirklich entfernen? E-Mails werden dann uber das Standard-System gesendet.')) return;
+        try {
+            const res = await fetch('/api/automations/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resendApiKey: null, resendFromEmail: null }),
+            });
+            if (res.ok) {
+                toast.success('Resend-Verbindung entfernt');
                 fetchAll();
             }
         } catch { toast.error('Fehler'); }
@@ -537,21 +583,74 @@ export default function AutomationsPage() {
                         </p>
                     </div>
 
-                    {/* Email Info */}
+                    {/* Custom Resend Configuration */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             </div>
                             <div>
-                                <h3 className="font-semibold text-gray-900">E-Mail Konfiguration</h3>
-                                <p className="text-sm text-gray-500">E-Mails werden uber Resend (noreply@leadsignal.de) gesendet</p>
+                                <h3 className="font-semibold text-gray-900">E-Mail Absender (Resend)</h3>
+                                <p className="text-sm text-gray-500">Verbinde deinen eigenen Resend-Account fur eigene Absender-Adresse</p>
                             </div>
                         </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            <span className="text-sm text-blue-700">E-Mail ist einsatzbereit - erstelle ein Template und aktiviere Auto E-Mail</span>
-                        </div>
+
+                        {settings.resendApiKeySet ? (
+                            <div className="space-y-3">
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        <div>
+                                            <span className="text-sm font-medium text-green-700">Eigener Resend verbunden</span>
+                                            <p className="text-xs text-green-600">Absender: {settings.resendFromEmail} • Key: {settings.resendApiKey}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={handleRemoveResend} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                                        Entfernen
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Alle E-Mails (an Leads und Mitarbeiter) werden uber deinen Resend-Account von <strong>{settings.resendFromEmail}</strong> gesendet.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <p className="text-sm text-blue-700 mb-1 font-medium">Standard-Absender aktiv</p>
+                                    <p className="text-xs text-blue-600">E-Mails werden uber <strong>noreply@leadsignal.de</strong> gesendet. Verbinde deinen eigenen Resend-Account um E-Mails von deiner Domain zu senden.</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500 block mb-1">Resend API Key</label>
+                                    <input
+                                        type="password"
+                                        value={resendKeyInput}
+                                        onChange={(e) => setResendKeyInput(e.target.value)}
+                                        placeholder="re_..."
+                                        className="w-full max-w-md px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none font-mono text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500 block mb-1">Absender E-Mail (verifizierte Domain in Resend)</label>
+                                    <input
+                                        type="email"
+                                        value={resendEmailInput}
+                                        onChange={(e) => setResendEmailInput(e.target.value)}
+                                        placeholder="info@deine-firma.de"
+                                        className="w-full max-w-md px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] outline-none text-sm"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleSaveResend}
+                                    disabled={!resendKeyInput || !resendEmailInput}
+                                    className="px-4 py-2.5 bg-[#0052FF] text-white rounded-lg text-sm font-medium hover:bg-[#0047E1] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Resend verbinden
+                                </button>
+                                <p className="text-xs text-gray-400">
+                                    Du brauchst: 1) Resend-Account (resend.com) 2) Verifizierte Domain 3) API Key. Alle E-Mails an Leads UND Mitarbeiter gehen dann uber deinen Account.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

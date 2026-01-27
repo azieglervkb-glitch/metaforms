@@ -2,17 +2,58 @@ import { Resend } from 'resend';
 import crypto from 'crypto';
 import { query, queryOne } from './db';
 
-// Lazy initialization
-let resendClient: Resend | null = null;
+// System Resend client (lazy, uses env RESEND_API_KEY)
+let systemResendClient: Resend | null = null;
+function getSystemResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!systemResendClient) systemResendClient = new Resend(process.env.RESEND_API_KEY);
+  return systemResendClient;
+}
 
+// Per-org Resend client cache
+const orgResendCache = new Map<string, { client: Resend; fromEmail: string }>();
+
+export interface ResendConfig {
+  client: Resend;
+  fromEmail: string;
+  isCustom: boolean;
+}
+
+/**
+ * Get the Resend client + from-email for an org.
+ * If the org has their own Resend API key + verified from email, use those.
+ * Otherwise fall back to system Resend (noreply@leadsignal.de).
+ */
+export async function getResendForOrg(orgId: string): Promise<ResendConfig | null> {
+  try {
+    const org = await queryOne<{ resend_api_key: string | null; resend_from_email: string | null }>(
+      'SELECT resend_api_key, resend_from_email FROM organizations WHERE id = $1',
+      [orgId]
+    );
+
+    if (org?.resend_api_key && org?.resend_from_email) {
+      // Org has custom Resend — use it
+      const cached = orgResendCache.get(orgId);
+      if (cached && cached.fromEmail === org.resend_from_email) {
+        return { client: cached.client, fromEmail: org.resend_from_email, isCustom: true };
+      }
+      const client = new Resend(org.resend_api_key);
+      orgResendCache.set(orgId, { client, fromEmail: org.resend_from_email });
+      return { client, fromEmail: org.resend_from_email, isCustom: true };
+    }
+  } catch {
+    // columns might not exist yet — fall through to system
+  }
+
+  // Fall back to system Resend
+  const sys = getSystemResend();
+  if (!sys) return null;
+  return { client: sys, fromEmail: 'noreply@leadsignal.de', isCustom: false };
+}
+
+// Keep legacy helper for backwards compat within this file
 function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) {
-    return null;
-  }
-  if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
+  return getSystemResend();
 }
 
 interface LeadInfo {
@@ -354,17 +395,14 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
   const unqualifiedUrl = `${appUrl}/api/leads/rate?token=${ratingToken}&rating=unqualified`;
   const dashboardUrl = `${appUrl}/dashboard/kanban`;
 
-  if (!process.env.RESEND_API_KEY) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV] Email skipped - RESEND_API_KEY not configured');
-    }
-    return { success: true, dev: true };
-  }
-
   try {
-    const resend = getResend();
-    if (!resend) {
-      return { success: false, error: 'Resend not configured' };
+    // Get org-specific or system Resend client
+    const resendConfig = await getResendForOrg(params.orgId);
+    if (!resendConfig) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV] Email skipped - no Resend configured');
+      }
+      return { success: true, dev: true };
     }
 
     // Get custom template or default
@@ -397,22 +435,19 @@ export async function sendLeadAssignmentEmail(params: LeadAssignmentEmailParams)
 
     // Apply branding to default template (replace hardcoded values)
     if (branding.companyName || branding.logoUrl || branding.primaryColor) {
-      // Replace default header logo/name
       htmlContent = htmlContent.replace(
         /<span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">\.<\/span><\/span>\s*<span style="color: #d1d5db; margin: 0 8px;">\|<\/span>\s*<span style="color: #6b7280; font-size: 14px;">Leads<\/span>/g,
         generateBrandedHeader(branding)
       );
-      // Replace default primary color
       htmlContent = htmlContent.replace(/#0052FF/g, brandColor);
-      // Replace footer brand name
       htmlContent = htmlContent.replace(/outrnk\. Leads/g, generateBrandedFooter(branding));
     }
 
-    // Determine sender name
+    // Determine sender name and from address
     const senderName = branding.companyName || 'outrnk Leads';
 
-    const { data, error } = await resend.emails.send({
-      from: `${senderName} <noreply@leadsignal.de>`,
+    const { data, error } = await resendConfig.client.emails.send({
+      from: `${senderName} <${resendConfig.fromEmail}>`,
       to: params.to,
       subject,
       html: htmlContent,
@@ -643,19 +678,16 @@ export async function sendTeamMemberWelcomeEmail(params: TeamMemberWelcomeEmailP
   const portalToken = await getOrCreatePortalToken(params.teamMemberId, params.orgId);
   const portalUrl = portalToken ? `${appUrl}/portal/${portalToken}` : `${appUrl}/dashboard/kanban`;
 
-  if (!process.env.RESEND_API_KEY) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV] Welcome email skipped - RESEND_API_KEY not configured');
-      console.log('[DEV] Would send to:', params.to);
-      console.log('[DEV] Portal URL:', portalUrl);
-    }
-    return { success: true, dev: true };
-  }
-
   try {
-    const resend = getResend();
-    if (!resend) {
-      return { success: false, error: 'Resend not configured' };
+    // Get org-specific or system Resend client
+    const resendConfig = await getResendForOrg(params.orgId);
+    if (!resendConfig) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV] Welcome email skipped - no Resend configured');
+        console.log('[DEV] Would send to:', params.to);
+        console.log('[DEV] Portal URL:', portalUrl);
+      }
+      return { success: true, dev: true };
     }
 
     // Get custom template or default
@@ -682,22 +714,19 @@ export async function sendTeamMemberWelcomeEmail(params: TeamMemberWelcomeEmailP
 
     // Apply branding to default template (replace hardcoded values)
     if (branding.companyName || branding.logoUrl || branding.primaryColor) {
-      // Replace default header logo/name
       htmlContent = htmlContent.replace(
         /<span style="font-size: 20px; font-weight: 700; color: #111827;">outrnk<span style="color: #0052FF;">\.<\/span><\/span>\s*<span style="color: #d1d5db; margin: 0 8px;">\|<\/span>\s*<span style="color: #6b7280; font-size: 14px;">Leads<\/span>/g,
         generateBrandedHeader(branding)
       );
-      // Replace default primary color
       htmlContent = htmlContent.replace(/#0052FF/g, brandColor);
-      // Replace footer brand name
       htmlContent = htmlContent.replace(/outrnk\. Leads/g, generateBrandedFooter(branding));
     }
 
-    // Determine sender name
+    // Determine sender name and from address
     const senderName = branding.companyName || 'outrnk Leads';
 
-    const { data, error } = await resend.emails.send({
-      from: `${senderName} <noreply@leadsignal.de>`,
+    const { data, error } = await resendConfig.client.emails.send({
+      from: `${senderName} <${resendConfig.fromEmail}>`,
       to: params.to,
       subject,
       html: htmlContent,

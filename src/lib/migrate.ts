@@ -230,6 +230,10 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS auto_email_enabled BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS auto_whatsapp_enabled BOOLEAN DEFAULT false`);
 
+    // Custom Resend integration (org's own Resend account for all emails)
+    await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS resend_api_key TEXT`);
+    await pool.query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS resend_from_email VARCHAR(255)`);
+
     // Trigger column for auto-message templates (new_lead = on form submission, lead_assigned = on assignment)
     await pool.query(`ALTER TABLE auto_message_templates ADD COLUMN IF NOT EXISTS trigger VARCHAR(30) DEFAULT 'new_lead'`);
 

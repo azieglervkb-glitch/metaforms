@@ -6,6 +6,8 @@ interface AutomationSettings {
     auto_email_enabled: boolean;
     auto_whatsapp_enabled: boolean;
     whatsapp_api_key: string | null;
+    resend_api_key: string | null;
+    resend_from_email: string | null;
 }
 
 // GET - Get automation settings
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
         let settings: AutomationSettings | null = null;
         try {
             settings = await queryOne<AutomationSettings>(
-                `SELECT auto_email_enabled, auto_whatsapp_enabled, whatsapp_api_key
+                `SELECT auto_email_enabled, auto_whatsapp_enabled, whatsapp_api_key, resend_api_key, resend_from_email
                  FROM organizations WHERE id = $1`,
                 [payload.orgId]
             );
@@ -31,6 +33,8 @@ export async function GET(request: NextRequest) {
                     autoEmailEnabled: false,
                     autoWhatsappEnabled: false,
                     whatsappApiKey: null,
+                    resendFromEmail: null,
+                    resendApiKeySet: false,
                 });
             }
             throw dbError;
@@ -41,6 +45,9 @@ export async function GET(request: NextRequest) {
             autoWhatsappEnabled: settings?.auto_whatsapp_enabled ?? false,
             whatsappApiKey: settings?.whatsapp_api_key ? '••••••' + settings.whatsapp_api_key.slice(-6) : null,
             whatsappApiKeySet: !!settings?.whatsapp_api_key,
+            resendApiKey: settings?.resend_api_key ? '••••••' + settings.resend_api_key.slice(-6) : null,
+            resendApiKeySet: !!settings?.resend_api_key,
+            resendFromEmail: settings?.resend_from_email || null,
         });
     } catch (error) {
         console.error('Get automation settings error:', error);
@@ -73,6 +80,14 @@ export async function POST(request: NextRequest) {
         if (body.whatsappApiKey !== undefined) {
             updates.push(`whatsapp_api_key = $${paramIdx++}`);
             values.push(body.whatsappApiKey || null);
+        }
+        if (body.resendApiKey !== undefined) {
+            updates.push(`resend_api_key = $${paramIdx++}`);
+            values.push(body.resendApiKey || null);
+        }
+        if (body.resendFromEmail !== undefined) {
+            updates.push(`resend_from_email = $${paramIdx++}`);
+            values.push(body.resendFromEmail || null);
         }
 
         if (updates.length === 0) {

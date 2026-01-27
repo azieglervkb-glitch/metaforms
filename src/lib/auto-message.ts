@@ -1,7 +1,7 @@
 // Auto-message sending utility
 // Sends emails and WhatsApp messages to leads automatically after form submission
-import { Resend } from 'resend';
 import { query, queryOne } from './db';
+import { getResendForOrg } from './email';
 
 interface AutoMessageTemplate {
     id: string;
@@ -51,14 +51,6 @@ interface LeadData {
     rawData: Record<string, string>;
     assigneeName?: string | null;
     assigneeEmail?: string | null;
-}
-
-// Resend client (lazy)
-let resendClient: Resend | null = null;
-function getResend(): Resend | null {
-    if (!process.env.RESEND_API_KEY) return null;
-    if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
-    return resendClient;
 }
 
 /**
@@ -194,8 +186,8 @@ async function sendAutoEmail(
 ): Promise<boolean> {
     if (!lead.email) return false;
 
-    const resend = getResend();
-    if (!resend) {
+    const resendConfig = await getResendForOrg(template.org_id);
+    if (!resendConfig) {
         console.log('[AUTO-EMAIL] Resend not configured, skipping');
         return false;
     }
@@ -217,8 +209,8 @@ async function sendAutoEmail(
         const subject = replaceVariables(template.subject || 'Nachricht', lead, orgName);
         const senderName = template.sender_name || settings.branding_company_name || 'outrnk Leads';
 
-        const { error } = await resend.emails.send({
-            from: `${senderName} <noreply@leadsignal.de>`,
+        const { error } = await resendConfig.client.emails.send({
+            from: `${senderName} <${resendConfig.fromEmail}>`,
             to: lead.email,
             subject,
             html,
