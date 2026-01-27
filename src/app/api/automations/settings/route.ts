@@ -80,10 +80,21 @@ export async function POST(request: NextRequest) {
         }
 
         values.push(payload.orgId);
-        await query(
-            `UPDATE organizations SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIdx}`,
-            values
-        );
+        try {
+            await query(
+                `UPDATE organizations SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIdx}`,
+                values
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json(
+                    { error: 'Datenbank-Spalten fehlen. Bitte Migration ausfuhren (/api/migrate).' },
+                    { status: 500 }
+                );
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

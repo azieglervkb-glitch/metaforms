@@ -218,6 +218,10 @@ export default function AutomationsPage() {
                 }),
             });
             const data = await res.json();
+            if (!res.ok) {
+                toast.error(data.error || 'Fehler beim Erstellen');
+                return;
+            }
             if (data.template) {
                 setTemplates(ts => [data.template, ...ts]);
                 setEditingTemplate(data.template);
@@ -245,6 +249,10 @@ export default function AutomationsPage() {
                 }),
             });
             const data = await res.json();
+            if (!res.ok) {
+                toast.error(data.error || 'Fehler beim Erstellen');
+                return;
+            }
             if (data.template) {
                 setTemplates(ts => [data.template, ...ts]);
                 setEditingTemplate(data.template);

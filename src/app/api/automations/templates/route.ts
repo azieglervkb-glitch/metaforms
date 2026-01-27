@@ -75,22 +75,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Typ muss email oder whatsapp sein' }, { status: 400 });
         }
 
-        const template = await queryOne<AutoMessageTemplate>(
-            `INSERT INTO auto_message_templates (org_id, name, type, form_id, form_name, subject, sender_name, content, is_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING *`,
-            [
-                payload.orgId,
-                name,
-                type,
-                formId || null,
-                formName || null,
-                subject || null,
-                senderName || null,
-                JSON.stringify(content),
-                isActive !== false,
-            ]
-        );
+        let template: AutoMessageTemplate | null = null;
+        try {
+            template = await queryOne<AutoMessageTemplate>(
+                `INSERT INTO auto_message_templates (org_id, name, type, form_id, form_name, subject, sender_name, content, is_active)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 RETURNING *`,
+                [
+                    payload.orgId,
+                    name,
+                    type,
+                    formId || null,
+                    formName || null,
+                    subject || null,
+                    senderName || null,
+                    JSON.stringify(content),
+                    isActive !== false,
+                ]
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json(
+                    { error: 'Datenbank-Tabelle fehlt. Bitte Migration ausfuhren (/api/migrate).' },
+                    { status: 500 }
+                );
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ template });
     } catch (error) {
@@ -115,11 +127,19 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ error: 'Template ID erforderlich' }, { status: 400 });
         }
 
-        // Verify ownership
-        const existing = await queryOne<{ id: string }>(
-            `SELECT id FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
-            [id, payload.orgId]
-        );
+        let existing: { id: string } | null = null;
+        try {
+            existing = await queryOne<{ id: string }>(
+                `SELECT id FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
+                [id, payload.orgId]
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ error: 'Datenbank-Tabelle fehlt. Bitte Migration ausfuhren (/api/migrate).' }, { status: 500 });
+            }
+            throw dbError;
+        }
         if (!existing) {
             return NextResponse.json({ error: 'Template nicht gefunden' }, { status: 404 });
         }
@@ -170,10 +190,18 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Template ID erforderlich' }, { status: 400 });
         }
 
-        await query(
-            `DELETE FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
-            [id, payload.orgId]
-        );
+        try {
+            await query(
+                `DELETE FROM auto_message_templates WHERE id = $1 AND org_id = $2`,
+                [id, payload.orgId]
+            );
+        } catch (dbError: unknown) {
+            const msg = dbError instanceof Error ? dbError.message : '';
+            if (msg.includes('does not exist')) {
+                return NextResponse.json({ error: 'Datenbank-Tabelle fehlt. Bitte Migration ausfuhren (/api/migrate).' }, { status: 500 });
+            }
+            throw dbError;
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
