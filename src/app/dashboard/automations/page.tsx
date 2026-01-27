@@ -53,6 +53,12 @@ interface Settings {
     resendFromEmail: string | null;
 }
 
+interface Branding {
+    companyName: string | null;
+    logoUrl: string | null;
+    primaryColor: string | null;
+}
+
 const PRESET_TEMPLATES: { name: string; type: 'email' | 'whatsapp'; subject?: string; content: unknown }[] = [
     {
         name: 'Danke fur deine Anfrage',
@@ -133,6 +139,7 @@ export default function AutomationsPage() {
         resendApiKey: null, resendApiKeySet: false, resendFromEmail: null,
     });
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [branding, setBranding] = useState<Branding>({ companyName: null, logoUrl: null, primaryColor: null });
     const [loading, setLoading] = useState(true);
     const [activeView, setActiveView] = useState<'templates' | 'logs' | 'settings'>('templates');
     const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
@@ -148,18 +155,21 @@ export default function AutomationsPage() {
 
     const fetchAll = useCallback(async () => {
         try {
-            const [tRes, sRes, lRes] = await Promise.all([
+            const [tRes, sRes, lRes, bRes] = await Promise.all([
                 fetch('/api/automations/templates'),
                 fetch('/api/automations/settings'),
                 fetch('/api/automations/logs?limit=30'),
+                fetch('/api/settings/branding'),
             ]);
             const tData = await tRes.json();
             const sData = await sRes.json();
             const lData = await lRes.json();
+            const bData = await bRes.json();
             setTemplates(tData.templates || []);
             setForms(tData.forms || []);
             setSettings(sData);
             setLogs(lData.logs || []);
+            setBranding({ companyName: bData.companyName || null, logoUrl: bData.logoUrl || null, primaryColor: bData.primaryColor || null });
         } catch (err) {
             console.error('Fetch error:', err);
         }
@@ -361,6 +371,7 @@ export default function AutomationsPage() {
                 forms={forms}
                 leadVariables={LEAD_VARIABLES}
                 assigneeVariables={ASSIGNEE_VARIABLES}
+                branding={branding}
                 saving={saving}
                 onSave={(t) => { handleSaveTemplate(t); setEditingTemplate(t); }}
                 onClose={() => { setEditingTemplate(null); fetchAll(); }}
@@ -722,11 +733,12 @@ export default function AutomationsPage() {
 // ==========================================================================
 // Template Editor Component
 // ==========================================================================
-function TemplateEditor({ template, forms, leadVariables, assigneeVariables, saving, onSave, onClose }: {
+function TemplateEditor({ template, forms, leadVariables, assigneeVariables, branding, saving, onSave, onClose }: {
     template: Template;
     forms: FormOption[];
     leadVariables: { key: string; label: string }[];
     assigneeVariables: { key: string; label: string }[];
+    branding: Branding;
     saving: boolean;
     onSave: (t: Template) => void;
     onClose: () => void;
@@ -1027,7 +1039,13 @@ function TemplateEditor({ template, forms, leadVariables, assigneeVariables, sav
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 max-w-[480px] mx-auto overflow-hidden">
                                     {/* Email Header */}
                                     <div className="p-5 border-b border-gray-200">
-                                        <span className="text-lg font-bold text-gray-900">outrnk<span className="text-[#0052FF]">.</span></span>
+                                        {branding.logoUrl ? (
+                                            <img src={branding.logoUrl} alt={branding.companyName || 'Logo'} className="h-8 object-contain" />
+                                        ) : (
+                                            <span className="text-lg font-bold text-gray-900">
+                                                {branding.companyName || <>outrnk<span style={{ color: branding.primaryColor || '#0052FF' }}>.</span></>}
+                                            </span>
+                                        )}
                                     </div>
                                     {/* Email Body */}
                                     <div className="p-5">
@@ -1035,17 +1053,17 @@ function TemplateEditor({ template, forms, leadVariables, assigneeVariables, sav
                                             <div key={block.id}>
                                                 {block.type === 'heading' && (
                                                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
+                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, branding.companyName || 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                                     </h2>
                                                 )}
                                                 {block.type === 'text' && (
                                                     <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">
-                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
+                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, branding.companyName || 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                                     </p>
                                                 )}
                                                 {block.type === 'button' && (
                                                     <div className="mb-3">
-                                                        <span className="inline-block px-5 py-2.5 bg-[#0052FF] text-white rounded-md text-sm font-medium">
+                                                        <span className="inline-block px-5 py-2.5 text-white rounded-md text-sm font-medium" style={{ backgroundColor: branding.primaryColor || '#0052FF' }}>
                                                             {block.text || 'Button'}
                                                         </span>
                                                     </div>
@@ -1056,7 +1074,7 @@ function TemplateEditor({ template, forms, leadVariables, assigneeVariables, sav
                                     </div>
                                     {/* Email Footer */}
                                     <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
-                                        <p className="text-xs text-gray-400">outrnk. Leads</p>
+                                        <p className="text-xs text-gray-400">{branding.companyName || 'outrnk. Leads'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1073,7 +1091,7 @@ function TemplateEditor({ template, forms, leadVariables, assigneeVariables, sav
                                                 .replace(/\{\{email\}\}/g, 'max@example.com')
                                                 .replace(/\{\{phone\}\}/g, '+49 123 456789')
                                                 .replace(/\{\{form_name\}\}/g, 'Kontaktformular')
-                                                .replace(/\{\{company_name\}\}/g, 'Firma')
+                                                .replace(/\{\{company_name\}\}/g, branding.companyName || 'Firma')
                                                 .replace(/\{\{assignee_name\}\}/g, 'Anna Muller')
                                                 .replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                         </p>
