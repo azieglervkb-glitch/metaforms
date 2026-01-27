@@ -100,6 +100,8 @@ export async function POST(
                 formId: lead.form_id || null,
                 formName: lead.form_name || null,
                 rawData,
+                assigneeName: assigneeName,
+                assigneeEmail: assignee.email,
             }, 'lead_assigned');
         } catch (autoMsgError) {
             console.error('Auto-message sending failed (non-blocking):', autoMsgError);

@@ -49,6 +49,8 @@ interface LeadData {
     formId: string | null;
     formName: string | null;
     rawData: Record<string, string>;
+    assigneeName?: string | null;
+    assigneeEmail?: string | null;
 }
 
 // Resend client (lazy)
@@ -73,7 +75,9 @@ function replaceVariables(text: string, lead: LeadData, orgName: string | null):
         .replace(/\{\{email\}\}/g, lead.email || '')
         .replace(/\{\{phone\}\}/g, lead.phone || '')
         .replace(/\{\{form_name\}\}/g, lead.formName || '')
-        .replace(/\{\{company_name\}\}/g, orgName || '');
+        .replace(/\{\{company_name\}\}/g, orgName || '')
+        .replace(/\{\{assignee_name\}\}/g, lead.assigneeName || '')
+        .replace(/\{\{assignee_email\}\}/g, lead.assigneeEmail || '');
 
     // Replace custom raw_data fields: {{field_name}}
     for (const [key, value] of Object.entries(lead.rawData)) {

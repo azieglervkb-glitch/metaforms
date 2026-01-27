@@ -102,7 +102,7 @@ const PRESET_TEMPLATES: { name: string; type: 'email' | 'whatsapp'; subject?: st
     },
 ];
 
-const AVAILABLE_VARIABLES = [
+const LEAD_VARIABLES = [
     { key: '{{full_name}}', label: 'Voller Name' },
     { key: '{{first_name}}', label: 'Vorname' },
     { key: '{{last_name}}', label: 'Nachname' },
@@ -110,6 +110,11 @@ const AVAILABLE_VARIABLES = [
     { key: '{{phone}}', label: 'Telefon' },
     { key: '{{form_name}}', label: 'Formular-Name' },
     { key: '{{company_name}}', label: 'Firmenname' },
+];
+
+const ASSIGNEE_VARIABLES = [
+    { key: '{{assignee_name}}', label: 'Mitarbeiter-Name' },
+    { key: '{{assignee_email}}', label: 'Mitarbeiter-E-Mail' },
 ];
 
 function genId() {
@@ -308,7 +313,8 @@ export default function AutomationsPage() {
             <TemplateEditor
                 template={editingTemplate}
                 forms={forms}
-                variables={AVAILABLE_VARIABLES}
+                leadVariables={LEAD_VARIABLES}
+                assigneeVariables={ASSIGNEE_VARIABLES}
                 saving={saving}
                 onSave={(t) => { handleSaveTemplate(t); setEditingTemplate(t); }}
                 onClose={() => { setEditingTemplate(null); fetchAll(); }}
@@ -617,10 +623,11 @@ export default function AutomationsPage() {
 // ==========================================================================
 // Template Editor Component
 // ==========================================================================
-function TemplateEditor({ template, forms, variables, saving, onSave, onClose }: {
+function TemplateEditor({ template, forms, leadVariables, assigneeVariables, saving, onSave, onClose }: {
     template: Template;
     forms: FormOption[];
-    variables: { key: string; label: string }[];
+    leadVariables: { key: string; label: string }[];
+    assigneeVariables: { key: string; label: string }[];
     saving: boolean;
     onSave: (t: Template) => void;
     onClose: () => void;
@@ -808,8 +815,9 @@ function TemplateEditor({ template, forms, variables, saving, onSave, onClose }:
                     {/* Variables */}
                     <div className="bg-white rounded-xl border border-gray-200 p-5">
                         <h3 className="font-medium text-gray-900 text-sm mb-2">Variablen</h3>
+                        <p className="text-[11px] text-gray-400 mb-2">Lead-Daten</p>
                         <div className="flex flex-wrap gap-1.5">
-                            {variables.map(v => (
+                            {leadVariables.map(v => (
                                 <button key={v.key} onClick={() => insertVariable(v.key)}
                                     className="px-2 py-1 bg-gray-100 hover:bg-[#0052FF]/10 hover:text-[#0052FF] rounded text-xs font-mono transition-colors"
                                     title={v.label}>
@@ -817,6 +825,20 @@ function TemplateEditor({ template, forms, variables, saving, onSave, onClose }:
                                 </button>
                             ))}
                         </div>
+                        {t.trigger === 'lead_assigned' && (
+                            <>
+                                <p className="text-[11px] text-gray-400 mt-3 mb-2">Mitarbeiter-Daten</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {assigneeVariables.map(v => (
+                                        <button key={v.key} onClick={() => insertVariable(v.key)}
+                                            className="px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded text-xs font-mono transition-colors"
+                                            title={v.label}>
+                                            {v.key}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Content Editor */}
@@ -914,12 +936,12 @@ function TemplateEditor({ template, forms, variables, saving, onSave, onClose }:
                                             <div key={block.id}>
                                                 {block.type === 'heading' && (
                                                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma')}
+                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                                     </h2>
                                                 )}
                                                 {block.type === 'text' && (
                                                     <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">
-                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma')}
+                                                        {(block.text || '').replace(/\{\{first_name\}\}/g, 'Max').replace(/\{\{full_name\}\}/g, 'Max Mustermann').replace(/\{\{company_name\}\}/g, 'Firma').replace(/\{\{assignee_name\}\}/g, 'Anna Muller').replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                                     </p>
                                                 )}
                                                 {block.type === 'button' && (
@@ -952,7 +974,9 @@ function TemplateEditor({ template, forms, variables, saving, onSave, onClose }:
                                                 .replace(/\{\{email\}\}/g, 'max@example.com')
                                                 .replace(/\{\{phone\}\}/g, '+49 123 456789')
                                                 .replace(/\{\{form_name\}\}/g, 'Kontaktformular')
-                                                .replace(/\{\{company_name\}\}/g, 'Firma')}
+                                                .replace(/\{\{company_name\}\}/g, 'Firma')
+                                                .replace(/\{\{assignee_name\}\}/g, 'Anna Muller')
+                                                .replace(/\{\{assignee_email\}\}/g, 'anna@firma.de')}
                                         </p>
                                         <div className="flex items-center justify-end gap-1 mt-1">
                                             <span className="text-[10px] text-gray-500">14:32</span>

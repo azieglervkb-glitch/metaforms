@@ -146,6 +146,8 @@ export async function POST(request: NextRequest) {
                 formId: lead.form_id || null,
                 formName: lead.form_name || null,
                 rawData,
+                assigneeName: `${teamMember.first_name} ${teamMember.last_name}`,
+                assigneeEmail: teamMember.email,
             }, 'lead_assigned');
         } catch (autoMsgError) {
             console.error('Auto-message sending failed (non-blocking):', autoMsgError);
