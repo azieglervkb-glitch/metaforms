@@ -155,21 +155,28 @@ export default function AutomationsPage() {
 
     const fetchAll = useCallback(async () => {
         try {
-            const [tRes, sRes, lRes, bRes] = await Promise.all([
+            const [tRes, sRes, lRes] = await Promise.all([
                 fetch('/api/automations/templates'),
                 fetch('/api/automations/settings'),
                 fetch('/api/automations/logs?limit=30'),
-                fetch('/api/settings/branding'),
             ]);
             const tData = await tRes.json();
             const sData = await sRes.json();
             const lData = await lRes.json();
-            const bData = await bRes.json();
             setTemplates(tData.templates || []);
             setForms(tData.forms || []);
             setSettings(sData);
             setLogs(lData.logs || []);
-            setBranding({ companyName: bData.companyName || null, logoUrl: bData.logoUrl || null, primaryColor: bData.primaryColor || null });
+            // Fetch branding separately to not break other fetches
+            try {
+                const bRes = await fetch('/api/settings/branding');
+                if (bRes.ok) {
+                    const bData = await bRes.json();
+                    setBranding({ companyName: bData.companyName || null, logoUrl: bData.logoUrl || null, primaryColor: bData.primaryColor || null });
+                }
+            } catch (brandingErr) {
+                console.error('Branding fetch error:', brandingErr);
+            }
         } catch (err) {
             console.error('Fetch error:', err);
         }
