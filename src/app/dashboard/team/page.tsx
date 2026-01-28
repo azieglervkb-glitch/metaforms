@@ -172,21 +172,29 @@ export default function TeamPage() {
     };
 
     const copyToClipboard = async (text: string): Promise<boolean> => {
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
                 await navigator.clipboard.writeText(text);
                 return true;
-            } else {
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                return true;
+            } catch {
+                // Clipboard API failed (likely user gesture expired after async), fall through to fallback
             }
+        }
+        // Fallback: textarea + execCommand (works after async in most browsers)
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '0';
+            textArea.setAttribute('readonly', '');
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return success;
         } catch {
             return false;
         }
@@ -206,8 +214,9 @@ export default function TeamPage() {
                 if (copied) {
                     toast.success('Portal-Link in Zwischenablage kopiert!');
                 } else {
-                    toast.success('Portal-Link erstellt!');
+                    // Show link in prompt so user can copy manually
                     console.log('Portal URL:', data.portalUrl);
+                    prompt('Link erstellt! Hier kopieren:', data.portalUrl);
                 }
                 fetchMembers();
             } else {
@@ -231,8 +240,9 @@ export default function TeamPage() {
                 if (copied) {
                     toast.success('Portal-Link kopiert!');
                 } else {
-                    toast.error('Kopieren fehlgeschlagen');
+                    // Show link in prompt so user can copy manually
                     console.log('Portal URL:', data.portalUrl);
+                    prompt('Kopieren fehlgeschlagen. Hier ist der Link:', data.portalUrl);
                 }
             } else {
                 toast.error(data.error || 'Fehler beim Kopieren');
